@@ -69,8 +69,8 @@ class Image(AlbumItem):
     )
 
     # Image metadata (fetched from exif)
-    camera = models.ForeignKey(Camera, on_delete=models.CASCADE, null=True, blank=True)
-    lens = models.ForeignKey(Lens, on_delete=models.CASCADE, null=True, blank=True)
+    camera = models.ForeignKey(Camera, on_delete=models.SET_NULL, null=True, blank=True)
+    lens = models.ForeignKey(Lens, on_delete=models.SET_NULL, null=True, blank=True)
     date_taken = models.DateTimeField("date taken", null=True, blank=True)
     focal_length = models.IntegerField("focal length", null=True, blank=True)
     focal_length_35 = models.IntegerField(
@@ -133,6 +133,28 @@ class AlbumItems(models.Model):
     def __str__(self):
         return f'{self.album.title} - {self.item}'
 
+class Location(models.Model):
+    class Meta:
+        db_table = "locations"
+
+    name = models.CharField(max_length=100, )
+    coordinate_lng = models.FloatField(
+        "longitudinal coordinates",
+        null=True,
+        blank=True,
+    )
+    coordinate_lat = models.FloatField(
+        "latitudinal coordinates",
+        null=True,
+        blank=True,
+    )
+
+class Category(models.Model):
+    class Meta:
+        db_table = "categories"
+
+    name = models.CharField(max_length=100)
+    order = models.IntegerField('order of the category', default=0)
 
 class Album(models.Model):
     class Meta:
@@ -140,17 +162,8 @@ class Album(models.Model):
 
     title = models.CharField(max_length=100)
     slug = models.SlugField(max_length=100, null=True, blank=True)
-    location = models.CharField(max_length=100, blank=True, help_text="Event location in freeform text")
-    location_coordinate_lng = models.FloatField(
-        "longitudinal coordinates",
-        null=True,
-        blank=True,
-    )
-    location_coordinate_lat = models.FloatField(
-        "latitudinal coordinates",
-        null=True,
-        blank=True,
-    )
+    location = models.ForeignKey(Location, null=True, blank=True, help_text="Event location", on_delete=models.SET_NULL)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
     description = models.TextField(blank=True)
     date_start = models.DateField("start date", null=True, blank=True)
     date_end = models.DateField("end date", null=True, blank=True)

@@ -155,6 +155,9 @@ class Location(models.Model):
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        return f'{self.name} <{self.coordinate_lat},{self.coordinate_lng}>'
+
 class Category(models.Model):
     class Meta:
         db_table = "categories"

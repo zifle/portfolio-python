@@ -7,7 +7,8 @@ from PIL.Image import Exif
 from PIL.ImageFile import ImageFile
 from PIL.TiffImagePlugin import IFDRational
 from django.core.files.storage import Storage, storages
-from django.db.models import Count
+from django.db.models import Count, F, Q
+from django.db.models.functions import ACos, Cos, Radians, Sin
 from django.forms.models import model_to_dict
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, get_object_or_404
@@ -19,6 +20,7 @@ from PIL import Image, ExifTags, ImageOps
 from PIL.ExifTags import TAGS
 
 from portfolio.models import Album, Location, Camera, Lens, Category, Image as ImageModel
+from portfolio.utils import get_mean_gps_position
 
 
 # Create your views here.
@@ -160,6 +162,12 @@ class AlbumUpload(View):
         1200,
         2000
     ]
+
+    def get(self, request, id):
+        """Temporary test method for location suggestion code"""
+        lat = 55.6897079
+        lng = 12.6003911
+        return HttpResponse(str(self.get_location_suggestion([(lat,lng)])))
 
     def post(self, request, id):
         if not request.user.is_authenticated:
@@ -321,11 +329,31 @@ class AlbumUpload(View):
 
     @staticmethod
     def get_location_suggestion(gps_coords: list[tuple[float, float]]) -> Location|None:
+        """
+        Given a list of (lat,long) tuples of coordinates, find an existing saved location
+        within 1km of the point, and return the closest one (if multiple are found)
+        """
         if len(gps_coords) == 0:
             return None
-        # todo Find the average center of the gps_coords, and then do a query for the
-        #      closest Location object to those coords (should be within 1-200 meters)
-        return None
+
+        # SELECT
+        #   name,
+        #    ( 6371 * acos( cos( radians(57.046125) ) * cos( radians( locations.coordinate_lat ) )
+        #    * cos( radians(locations.coordinate_lng) - radians(9.9310493)) + sin(radians(57.046125))
+        #    * sin( radians(locations.coordinate_lat)))) AS distance
+        # FROM locations
+        # WHERE distance < 0.50
+        # ORDER BY distance;
+        max_distance_km = 1
+        earth_radius_km = 6371
+        pos_lat, pos_lng = get_mean_gps_position(gps_coords)
+        where = ( earth_radius_km * ACos( Cos( Radians( pos_lat ) ) * Cos( Radians( F('coordinate_lat') ))
+           * Cos( Radians( F('coordinate_lng') ) - Radians(pos_lng)) + Sin(Radians(pos_lat))
+           * Sin( Radians( F('coordinate_lat') ))))
+
+        locations = Location.objects.annotate(distance=where).filter(distance__lte=max_distance_km)
+
+        return locations.first()
 
     @staticmethod
     def has_duplicate_image(img: ImageModel) -> ImageModel|None:

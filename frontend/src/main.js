@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
-import './style.css'
+import './style.scss'
+import './bootstrap.js'
 import App from './App.vue'
 import {createPinia} from "pinia";
 import {useAuthStore} from './store/auth';
@@ -13,4 +14,14 @@ app.use(router);
 const authStore = useAuthStore();
 authStore.setCsrfToken();
 
-app.mount('#app')
+app.mount('#app');
+
+// Set light-/dark-mode depending on user preference
+(() => {
+    let darkModeMql = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    if (darkModeMql && darkModeMql.matches) {
+        document.body.setAttribute('data-bs-theme', 'dark');
+    } else {
+        document.body.setAttribute('data-bs-theme', 'light');
+    }
+})();

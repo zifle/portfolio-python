@@ -1,0 +1,25 @@
+// Configuration
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+
+// Layout and Components
+@import "bootstrap/scss/root"; // ~ 7KB
+@import "bootstrap/scss/reboot"; // ~ 5KB
+@import "bootstrap/scss/type"; // ~ 2KB
+@import "bootstrap/scss/containers"; // ~ 1KB
+@import "bootstrap/scss/grid"; // ~ 15KB
+@import "bootstrap/scss/forms"; // ~ 25KB
+@import "bootstrap/scss/buttons"; // ~ 13KB
+@import "bootstrap/scss/transitions"; // < 1KB
+@import "bootstrap/scss/nav"; // ~ 4KB
+@import "bootstrap/scss/navbar"; // ~ 11KB
+@import "bootstrap/scss/progress"; // ~ 1KB
+@import "bootstrap/scss/spinners"; // ~ 2KB
+@import "bootstrap/scss/tables"; // ~ 7KB
+
+// Helpers and Utilities
+@import "bootstrap/scss/helpers"; // ~ 8KB
+@import "bootstrap/scss/utilities/api"; // ~ 87KB

@@ -101,7 +101,10 @@ class Image(AlbumItem):
     )
 
     def __str__(self):
-        return self.path
+        return self.path.format(self.available_res[-1])
+
+    def get_paths(self) -> list[str]:
+        return [self.path.format(size) for size in self.available_res]
 
 class TextBox(AlbumItem):
     class Meta:
@@ -149,12 +152,18 @@ class Location(models.Model):
         blank=True,
     )
 
+    def __str__(self):
+        return self.name
+
 class Category(models.Model):
     class Meta:
         db_table = "categories"
 
     name = models.CharField(max_length=100)
     order = models.IntegerField('order of the category', default=0)
+
+    def __str__(self):
+        return self.name
 
 class Album(models.Model):
     class Meta:
@@ -167,6 +176,7 @@ class Album(models.Model):
     description = models.TextField(blank=True)
     date_start = models.DateField("start date", null=True, blank=True)
     date_end = models.DateField("end date", null=True, blank=True)
+    published = models.BooleanField("published", default=True)
 
     items = models.ManyToManyField(
         AlbumItem,

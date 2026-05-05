@@ -23,18 +23,28 @@ const resetError = function() {
 </script>
 
 <template>
-    <div class="login">
-        <form @submit.prevent="login">
-            <fieldset>
-                <legend>Username</legend>
-                <input type="text" name="username" v-model="username" required @input="resetError" />
-            </fieldset>
-            <fieldset>
-                <legend>Password</legend>
-                <input type="password" name="password" v-model="password" required @input="resetError" />
-            </fieldset>
-            <button>Login</button>
-        </form>
-        <p v-if="error" class="text-danger">{{ error }}</p>
+    <div class="d-flex justify-content-center align-items-center">
+        <div class="login">
+            <form @submit.prevent="login">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" name="username" v-model="username" required @input="resetError"
+                        class="form-control" id="username"/>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" name="password" v-model="password" required @input="resetError"
+                        class="form-control" id="password"/>
+                </div>
+                <button class="btn btn-primary">Login</button>
+            </form>
+            <p v-if="error" class="text-danger">{{ error }}</p>
+        </div>
     </div>
 </template>
+
+<style scoped>
+.login {
+
+}
+</style>

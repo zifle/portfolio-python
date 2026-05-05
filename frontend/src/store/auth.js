@@ -62,7 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
                 saveState();
                 if (router) {
                     await router.push({
-                        name: 'login',
+                        name: 'home',
                     })
                 }
             }
@@ -98,8 +98,8 @@ export const useAuthStore = defineStore('auth', () => {
 
     function saveState() {
         localStorage.setItem('authState', JSON.stringify({
-            user: user,
-            isAuthenticated: true
+            user: user.value,
+            isAuthenticated: isAuthenticated.value,
         }))
     }
 

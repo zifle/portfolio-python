@@ -7,8 +7,7 @@ from PIL.Image import Exif
 from PIL.ImageFile import ImageFile
 from PIL.TiffImagePlugin import IFDRational
 from django.core.files.storage import Storage, storages
-from django.db.models import Count, F, Q
-from django.db.models.functions import ACos, Cos, Radians, Sin
+from django.db.models import Count
 from django.forms.models import model_to_dict
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, get_object_or_404
@@ -70,11 +69,7 @@ def user(request):
 class CategoryIndex(View):
     def get(self, request):
         cats = Category.objects.annotate(num_albums=Count('album'))
-        cats_list = []
-        for cat in cats:
-            cDict = model_to_dict(cat)
-            cDict['num_albums'] = cat.num_albums
-            cats_list.append(cDict)
+        cats_list = [cat.to_dict() for cat in cats]
         return JsonResponse(cats_list, safe=False)
 
     def post(self, request):
@@ -89,7 +84,7 @@ class CategoryIndex(View):
             category = Category.objects.create(name=data['name'], order=data['order'] or 0)
         category.save()
 
-        data = model_to_dict(category)
+        data = category.to_dict()
         return JsonResponse(data)
 
 class CategoryDetail(View):
@@ -103,12 +98,8 @@ class CategoryDetail(View):
 
 class AlbumIndex(View):
     def get(self, request):
-        albums = Album.objects.annotate(num_images=Count('albumitems'))
-        album_list = []
-        for album in albums:
-            aDict = model_to_dict(album)
-            aDict['num_images'] = album.num_images
-            album_list.append(aDict)
+        albums = Album.objects.all()
+        album_list = [album.to_dict() for album in albums]
         return JsonResponse(album_list, safe=False)
 
     def post(self, request):
@@ -116,31 +107,40 @@ class AlbumIndex(View):
             return JsonResponse({"message": "Not logged in"}, status=401)
 
         data = json.loads(request.body.decode('utf-8'))
-        if 'id' in data and data['id'] > 0:
-            album = get_object_or_404(Album, pk=data['id'])
 
-            if 'category' in data and data['category'] is not None and data['category'] > 0:
-                album.category = get_object_or_404(Category, pk=data['category'])
-            else:
-                album.category = None
-
-            if 'location' in data and data['location'] is not None and data['location'] > 0:
-                album.location = get_object_or_404(Location, pk=data['location'])
-            else:
-                album.location = None
-            pass
+        if 'category' in data and data['category'] is not None and data['category'] > 0:
+            data['category'] = get_object_or_404(Category, pk=data['category'])
         else:
-            album = Album.objects.create(title=data['title'], description=data['description'])
-            pass
-        album.save()
+            data['category'] = None
 
-        data = model_to_dict(album)
+        if 'location' in data and data['location'] is not None and data['location'] > 0:
+            data['location'] = get_object_or_404(Location, pk=data['location'])
+        else:
+            data['location'] = None
+
+        items = []
+        if 'items' in data:
+            items = data.pop('items')
+
+        id = data.pop('id') if 'id' in data else 0
+
+        if id and id > 0:
+            album = get_object_or_404(Album, pk=id)
+            for attr, value in data.items():
+                setattr(album, attr, value)
+        else:
+            album = Album.objects.create(**data)
+
+        album.save()
+        album.set_album_items(items)
+
+        data = album.to_dict()
         return JsonResponse(data)
 
 class AlbumDetail(View):
     def get(self, request, id):
         album = get_object_or_404(Album, pk=id)
-        data = model_to_dict(album)
+        data = album.to_dict()
         return JsonResponse(data, safe=False)
 
     def delete(self, request, id):
@@ -162,12 +162,15 @@ class AlbumUpload(View):
         1200,
         2000
     ]
+    upload_folder = 'uploads/'
 
     def get(self, request, id):
         """Temporary test method for location suggestion code"""
         lat = 55.6897079
         lng = 12.6003911
-        return HttpResponse(str(self.get_location_suggestion([(lat,lng)])))
+        sLocations = Location.get_nearby([(lat, lng)])
+        locations = [loc.to_dict() for loc in sLocations]
+        return JsonResponse(locations, safe=False)
 
     def post(self, request, id):
         if not request.user.is_authenticated:
@@ -182,7 +185,7 @@ class AlbumUpload(View):
             try:
                 with Image.open(io.BytesIO(img_file.read())) as im:
                     exif = im.getexif()
-                    fname = self.get_image_path(im, img_file.name, store)
+                    fname = self.get_image_path(img_file.name, store)
                     img_model.path = fname
                     exif_dict = self.img_exif_dict(exif)
                     self.set_exif_params(img_model, exif_dict)
@@ -193,6 +196,8 @@ class AlbumUpload(View):
                     else:
                         resizes = self.make_image_resizes(im, fname, store)
                         img_model.available_res = resizes['available_sizes']
+                        img_model.max_width = resizes['max_width']
+                        img_model.max_height = resizes['max_height']
             except OSError as e:
                 return JsonResponse({"message": f"Uploaded file not an image!: {e}"}, status=400)
 
@@ -201,16 +206,24 @@ class AlbumUpload(View):
             if exif_dict['gps_lat'] and exif_dict['gps_lng']:
                 gps_coords.append((exif_dict['gps_lat'], exif_dict['gps_lng']))
 
-        location = self.get_location_suggestion(gps_coords)
+        locations = Location.get_nearby(gps_coords)
         cameras = {im.camera for im in imglist if im.camera is not None}
         lenses = {im.lens for im in imglist if im.lens is not None}
+        locs = sorted([loc.to_dict() for loc in locations], key=lambda loc: loc['distance'])
+        dates = set()
+        for im in imglist:
+            if im.date_taken:
+                dates.add(im.date_taken.date())
+            else:
+                dates.add(None)
 
         return JsonResponse({
             "success": True,
-            "cameras": list([model_to_dict(camera) for camera in cameras]),
-            "lenses": list([model_to_dict(lens) for lens in lenses]),
-            "images": [i.pk for i in imglist],
-            "location": location,
+            "cameras": [camera.to_dict() for camera in cameras],
+            "lenses": [lens.to_dict() for lens in lenses],
+            "images": [i.to_dict() for i in imglist],
+            "locations": locs,
+            "dates": sorted(list(dates)),
         })
 
     @staticmethod
@@ -249,42 +262,66 @@ class AlbumUpload(View):
         return exifDict
 
     @staticmethod
-    def resize_image(im: ImageFile, max_dimension=2000):
-        image = ImageOps.contain(im, (max_dimension, max_dimension))
+    def resize_image(im: ImageFile, max_width=2000):
+        """
+        Resize the image, keeping its aspect ratio, to the desired width.
+        Note that images may be taller than the max_width specified.
+        """
+        image = ImageOps.contain(im, (max_width, max_width*3))
         return image
 
-    @staticmethod
-    def get_image_path(im:ImageFile, filename:str, store:Storage):
+    @classmethod
+    def get_image_path(cls, filename:str, store:Storage):
         # Strip the file type from the name, so we can append size suffix
         filename = '.'.join(filename.lower().split('.')[:-1])
         date = datetime.today().strftime('%Y%m%d')
-        os.makedirs(store.path(date), exist_ok=True)
-        return f'{date}/{filename}_{{0}}.jpg'
+        upload_folder = cls.upload_folder
+        os.makedirs(store.path(upload_folder + date), exist_ok=True)
+        return f'{date}/{filename}_{{0}}w.jpg'
 
     @classmethod
-    def make_image_resizes(cls, im:ImageFile, fname:str, store:Storage) -> dict[str, str|list[int]]:
+    def make_image_resizes(cls, im:ImageFile, fname:str, store:Storage) -> dict[str, str|int|list[int]]:
         # fname = f'{date}/{filename}_{{0}}.jpg'
         resizes = {
             'path': fname,
-            'available_sizes': cls.image_sizes
+            'available_sizes': cls.image_sizes,
+            'max_width': 0,
+            'max_height': 0,
         }
+        # Get orientation, so we can properly rotate the image if it's not already been
+        exif = im.getexif()
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation': break
+        if exif[orientation] == 3:
+            im = im.rotate(180, expand=True)
+        elif exif[orientation] == 6:
+            im = im.rotate(270, expand=True)
+        elif exif[orientation] == 8:
+            im = im.rotate(90, expand=True)
+
+        upload_folder = cls.upload_folder
         for max_dimension in cls.image_sizes:
             img = cls.resize_image(im.copy(), max_dimension)
+            if img.height > resizes['max_height']:
+                resizes['max_height'] = img.height
+            if img.width > resizes['max_width']:
+                resizes['max_width'] = img.width
             _filename = fname.format(max_dimension)
-            storePath = store.path(_filename)
+            storePath = store.path(upload_folder + _filename)
             img.save(storePath)
         return resizes
 
     @staticmethod
     def set_exif_params(model: ImageModel, exif: dict[str, None|str|float|int]):
-        camera_brand = exif['Make']
-        camera_model = exif['Model']
-        camera, _ = Camera.objects.get_or_create(brand=camera_brand, model=camera_model)
-        model.camera = camera
+        if 'Make' in exif and 'Model' in exif:
+            camera_brand = exif['Make']
+            camera_model = exif['Model']
+            camera, _ = Camera.objects.get_or_create(brand=camera_brand, model=camera_model)
+            model.camera = camera
 
         if 'LensMake' in exif:
             lens_brand = str(exif['LensMake']).strip()
-            lens_model = str(exif['LensModel']).strip()
+            lens_model = str(exif['LensModel']).strip(' \u0000')
             lens, _ = Lens.objects.get_or_create(brand=lens_brand, model=lens_model)
             model.lens = lens
 
@@ -328,34 +365,6 @@ class AlbumUpload(View):
             model.aperture = exif['FNumber']
 
     @staticmethod
-    def get_location_suggestion(gps_coords: list[tuple[float, float]]) -> Location|None:
-        """
-        Given a list of (lat,long) tuples of coordinates, find an existing saved location
-        within 1km of the point, and return the closest one (if multiple are found)
-        """
-        if len(gps_coords) == 0:
-            return None
-
-        # SELECT
-        #   name,
-        #    ( 6371 * acos( cos( radians(57.046125) ) * cos( radians( locations.coordinate_lat ) )
-        #    * cos( radians(locations.coordinate_lng) - radians(9.9310493)) + sin(radians(57.046125))
-        #    * sin( radians(locations.coordinate_lat)))) AS distance
-        # FROM locations
-        # WHERE distance < 0.50
-        # ORDER BY distance;
-        max_distance_km = 1
-        earth_radius_km = 6371
-        pos_lat, pos_lng = get_mean_gps_position(gps_coords)
-        where = ( earth_radius_km * ACos( Cos( Radians( pos_lat ) ) * Cos( Radians( F('coordinate_lat') ))
-           * Cos( Radians( F('coordinate_lng') ) - Radians(pos_lng)) + Sin(Radians(pos_lat))
-           * Sin( Radians( F('coordinate_lat') ))))
-
-        locations = Location.objects.annotate(distance=where).filter(distance__lte=max_distance_km)
-
-        return locations.first()
-
-    @staticmethod
     def has_duplicate_image(img: ImageModel) -> ImageModel|None:
         """
         Check the DB for a saved Image with the same filename and date_taken.
@@ -391,11 +400,7 @@ def albumTogglePublish(request, id:int):
 class LocationsIndex(View):
     def get(self, request):
         locs = Location.objects.annotate(num_albums=Count('album'))
-        locs_list = []
-        for loc in locs:
-            lDict = model_to_dict(loc)
-            lDict['num_albums'] = loc.num_albums
-            locs_list.append(lDict)
+        locs_list = [loc.to_dict() for loc in locs]
         return JsonResponse(locs_list, safe=False)
 
     def post(self, request):

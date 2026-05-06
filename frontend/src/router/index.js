@@ -26,6 +26,10 @@ const routes = [
         },
         children: [
             {
+                path: '',
+                redirect: '/admin/albums'
+            },
+            {
                 path: 'categories',
                 name: 'admin-categories',
                 component: () => import('../pages/admin/categories/list.vue')
@@ -43,7 +47,7 @@ const routes = [
             {
                 path: 'albums/create',
                 name: 'admin-album-create',
-                component: () => import('../pages/admin/albums/edit.vue')
+                component: () => import('../pages/admin/albums/create.vue'),
             },
             {
                 path: 'albums/:id(\\d+)/edit',

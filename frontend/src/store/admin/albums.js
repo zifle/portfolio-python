@@ -55,7 +55,11 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
             });
             if (response.ok) {
                 const data = await response.json();
-                await router.push({name: 'admin-album-edit', params: {id: data.id}});
+                if (album.id !== data.id) {
+                    await router.push({name: 'admin-album-edit', params: {id: data.id}});
+                } else {
+                    return data;
+                }
             }
         }
     }
@@ -79,14 +83,13 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
         }
     }
 
-    async function uploadImages(album, formData) {
+    async function uploadImages(formData) {
         const authStore = useAuthStore();
         if (authStore.isAuthenticated) {
-            const response = await fetch(`/api/albums/${album.id}/upload`, {
+            const response = await fetch(`/api/albums/0/upload`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
-                    // 'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRFToken': getCSRFToken(),
                 },

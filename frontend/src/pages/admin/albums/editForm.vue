@@ -147,7 +147,7 @@ async function insertIntoDescription(text) {
         <template v-if="album.id">Edit {{ album.title }}</template>
         <template v-else>Create new album</template>
     </h2>
-    <form @submit.prevent="saveAlbum">
+    <form @submit.prevent="saveAlbum" class="mb-3">
         <div class="row">
             <div class="mb-3 col-lg-10">
                 <label for="album-title" class="form-label">Album Title</label>
@@ -210,7 +210,9 @@ async function insertIntoDescription(text) {
         <span v-if="saving">Saving ...</span>
     </form>
 
-    <items :items="album.items" @files-uploaded="imagesUploaded"
+    <h4>Album items</h4>
+    <items class="mt-4"
+           :items="album.items" @files-uploaded="imagesUploaded"
            @album-items="(itms) => emit('albumItems', itms)"
            @list-items="(itms) => tmp_album_items = itms"></items>
 </template>

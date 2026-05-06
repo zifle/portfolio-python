@@ -86,7 +86,7 @@ function removeItem(item) {
     <div class="row images">
         <div v-for="itm of itemsList" class="col-lg-3 col-6 mb-3 has-hover-controls">
             <div class="hover-controls">
-                <span class="badge text-bg-danger" @click="removeItem(itm)">X</span>
+                <span class="badge text-bg-danger clickable" @click="removeItem(itm)">X</span>
             </div>
 
             <img loading="lazy" :srcset="itm.srcset" :sizes="itm.sizes" :src="itm.src"

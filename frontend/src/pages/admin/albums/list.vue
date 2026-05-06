@@ -6,6 +6,12 @@ const albumStore = useAdminAlbumStore()
 onMounted(() => {
     albumStore.getAlbums();
 });
+
+function deleteAlbum(album) {
+    if (confirm('Are you sure you want to delete this album? This action CANNOT be reversed')) {
+        albumStore.deleteAlbum(album.id);
+    }
+}
 </script>
 
 <template>
@@ -32,9 +38,12 @@ onMounted(() => {
                 </button>
             </td>
             <td>
-                <router-link :to="{name: 'admin-album-edit', params: {id: album.id}}" class="btn btn-outline-info">
+                <router-link :to="{name: 'admin-album-edit', params: {id: album.id}}"
+                             class="btn btn-outline-info me-3">
                     🖉
                 </router-link>
+                <button :disabled="album.published" class="btn btn-outline-danger me-3"
+                        @click="deleteAlbum(album)">&#128465;</button>
             </td>
         </tr>
         </tbody>

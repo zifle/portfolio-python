@@ -6,7 +6,10 @@ import router from "../../router/index.js";
 export const useAdminAlbumStore = defineStore('admin/albums', () => {
     const albums = ref([]);
 
-    async function getAlbums() {
+    async function getAlbums(force = false) {
+        if (!force && albums.value.length > 0) {
+            return albums.value;
+        }
         const response = await fetch('/api/albums', {
             method: 'GET',
             credentials: 'include',
@@ -64,6 +67,22 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
         }
     }
 
+    async function deleteAlbum(id) {
+        const authStore = useAuthStore();
+        if (authStore.isAuthenticated) {
+            const response = await fetch(`/api/albums/${id}`, {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                }
+            });
+            if (response.ok) {
+                await getAlbums(true);
+            }
+        }
+    }
+
     async function togglePublished(album) {
         const authStore = useAuthStore();
         if (authStore.isAuthenticated) {
@@ -106,5 +125,6 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
         saveAlbum,
         togglePublished,
         uploadImages,
+        deleteAlbum,
     };
 });

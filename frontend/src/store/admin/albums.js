@@ -97,7 +97,7 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
                 body: JSON.stringify({publish: !album.published}),
             });
             if (response.ok) {
-                await getAlbums();
+                await getAlbums(true);
             }
         }
     }

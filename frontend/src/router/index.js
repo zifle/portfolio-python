@@ -8,7 +8,7 @@ const routes = [
         component: () => import('../pages/home.vue')
     },
     {
-        path: '/albums/{slug}',
+        path: '/albums/:slug',
         name: 'album',
         component: () => import('../pages/album.vue')
     },
@@ -19,7 +19,6 @@ const routes = [
     },
     {
         path: '/admin',
-        name: 'admin',
         component: () => import('../pages/admin.vue'),
         meta: {
             requiresAuth: true
@@ -27,6 +26,7 @@ const routes = [
         children: [
             {
                 path: '',
+                name: 'admin',
                 redirect: '/admin/albums'
             },
             {

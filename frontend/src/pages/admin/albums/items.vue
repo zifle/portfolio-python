@@ -40,8 +40,9 @@ const itemsList = computed(() => {
         if (_item !== null)
             final_items.push(_item);
     }
-    emit('listItems', final_items.sort((a, b) => a.order - b.order));
-    return final_items.sort((a, b) => a.order - b.order);
+    final_items.sort((a, b) => a.order - b.order);
+    emit('listItems', final_items);
+    return final_items;
 });
 
 const fileUpload = useTemplateRef('fileUpload');

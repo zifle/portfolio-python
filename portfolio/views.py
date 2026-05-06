@@ -98,7 +98,10 @@ class CategoryDetail(View):
 
 class AlbumIndex(View):
     def get(self, request):
-        albums = Album.objects.all()
+        if request.user.is_authenticated:
+            albums = Album.objects.all()
+        else:
+            albums = Album.objects.filter(published=True)
         album_list = [album.to_dict() for album in albums]
         return JsonResponse(album_list, safe=False)
 
@@ -139,7 +142,13 @@ class AlbumIndex(View):
 
 class AlbumDetail(View):
     def get(self, request, id):
-        album = get_object_or_404(Album, pk=id)
+        album = None
+        if isinstance(id, int):
+            album = get_object_or_404(Album, pk=id)
+        elif isinstance(id, str):
+            album = get_object_or_404(Album, slug=id)
+        if not album:
+            return JsonResponse({'error': 'Album not found'}, status=404)
         data = album.to_dict()
         return JsonResponse(data, safe=False)
 

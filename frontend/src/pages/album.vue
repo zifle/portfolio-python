@@ -195,6 +195,7 @@ function toggleGigante(ev, img) {
         once: true,
     });
     const iClone = i.cloneNode();
+    iClone.setAttribute('sizes', '100vw'); // Make sure the browser loads the proper image
     iClone.classList.remove('w-100');
     viewContainer.appendChild(iClone);
     viewContTainer.classList.remove('d-none');

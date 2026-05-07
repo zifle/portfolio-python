@@ -10,7 +10,7 @@ const itemsList = computed(() => {
     const final_items = [];
     let order = 0;
     for (let item of album_items) {
-        order = item.order ?? order+1;
+        order = order+1;
 
         let _item = {
             id: item.id,
@@ -40,7 +40,6 @@ const itemsList = computed(() => {
         if (_item !== null)
             final_items.push(_item);
     }
-    final_items.sort((a, b) => a.order - b.order);
     emit('listItems', final_items);
     return final_items;
 });
@@ -81,11 +80,114 @@ function removeItem(item) {
     }
     emit('albumItems', new_list);
 }
+
+let dragging = null;
+let draggingOrder = null;
+let dropInOrder = null;
+const sortableList = useTemplateRef('sortable');
+onMounted(() => {
+    sortableList.value.addEventListener('dragstart', e => {
+        let itemElm = getDragAfterElement(e.target, sortableList);
+        itemElm.classList.add('dragging');
+        const itemId = parseInt(itemElm.dataset.id);
+        dragging = itemsList.value.find(itm => itm.id === itemId);
+        draggingOrder = dragging.order;
+    });
+    sortableList.value.addEventListener('dragend', e => {
+        // Clean up temp dragging vars (this is called after `drop` event, so we're done handling it)
+        let itemElm = e.target;
+        itemElm.classList.remove('dragging');
+        const elms = sortableList.value.querySelectorAll('[draggable=true]');
+        for (let elm of elms) {
+            elm.classList.remove('over', 'drop-right', 'drop-left');
+        }
+        dropInOrder = null;
+        draggingOrder = null;
+        dragging = null;
+    });
+    sortableList.value.addEventListener('drop', e => {
+        e.preventDefault();
+        if (dropInOrder === null || dropInOrder === draggingOrder || dropInOrder === draggingOrder+1) {
+            // We skip handling the drop if we're dropping in either the same order, or +1.
+            // +1 order is essentially the same, since it will be "before the next" or "after this"
+            return;
+        }
+
+        const list = album_items;
+        const listLen = list.length;
+        const newList = [];
+        const moveItem = list.find(itm => itm.id === dragging.id);
+        for (let i=0; i<listLen; i++) {
+            if (i+1 === dropInOrder) {
+                newList.push(moveItem);
+            } else if (i+1 === dragging.order) {
+                continue;
+            }
+            newList.push(list[i]);
+        }
+        if (dropInOrder > listLen) {
+            // Make sure we append the item, if it was placed last
+            newList.push(moveItem);
+        }
+        let order = 0;
+        for (let itm of newList) {
+            itm.order = order = order+1;
+        }
+        emit('albumItems', newList);
+    });
+    sortableList.value.addEventListener('dragleave', e => {
+        dropInOrder = null;
+        const elms = sortableList.value.querySelectorAll('[draggable=true]');
+        for (let elm of elms) {
+            elm.classList.remove('over', 'drop-right', 'drop-left');
+        }
+    });
+    sortableList.value.addEventListener('dragover', e => {
+        e.preventDefault();
+        const draggingOverItemElm = getDragAfterElement(e.target, sortableList.value);
+        const elms = sortableList.value.querySelectorAll('[draggable=true]');
+        for (let elm of elms) {
+            elm.classList.remove('over', 'drop-right', 'drop-left');
+        }
+        dropInOrder = null;
+
+        if (draggingOverItemElm) {
+            const targetW = e.target.clientWidth;
+            const targetCenter = targetW/3;
+            const hoverX = e.offsetX;
+            const hoverOrder = parseInt(draggingOverItemElm.dataset.order);
+            let cls = ['over'];
+            if (hoverX < targetCenter) {
+                // Dropping before elm
+                cls.push('drop-left');
+                dropInOrder = hoverOrder;
+            } else if (hoverX > targetCenter*2) {
+                // Dropping after elm
+                cls.push('drop-right');
+                dropInOrder = hoverOrder+1;
+            }
+
+            draggingOverItemElm.classList.add(...cls);
+        }
+    });
+});
+function getDragAfterElement(target, container) {
+    if (target === document.body) return null;
+    if (target === container) {
+        return null;
+    }
+    if (target.attributes['draggable']) {
+        return target;
+    }
+    return getDragAfterElement(target.parentElement, container);
+}
+
 </script>
 
 <template>
-    <div class="row images">
-        <div v-for="itm of itemsList" class="col-lg-3 col-6 mb-3 has-hover-controls">
+    <div class="row images" ref="sortable">
+        <div v-for="itm of itemsList" class="col-lg-3 col-6 mb-3 has-hover-controls"
+             draggable="true" :data-order="itm.order" :data-id="itm.id">
             <div class="hover-controls">
                 <span class="badge text-bg-danger clickable" @click="removeItem(itm)">X</span>
             </div>
@@ -119,5 +221,27 @@ function removeItem(item) {
 }
 .has-hover-controls:hover > .hover-controls {
     display: block;
+}
+
+.over::after, .over::before {
+    content: '';
+    display: block;
+    position: absolute;
+    width: 33%;
+    height: 100%;
+    background-color: rgba(33,33,33,0.3);
+    top: 0;
+}
+.over::before {
+    left: 0;
+}
+.over::after {
+    right: 0;
+}
+.over.drop-left::before {
+    background-color: rgba(0,255,0,0.3);
+}
+.over.drop-right::after {
+    background-color: rgba(0,255,0,0.3);
 }
 </style>

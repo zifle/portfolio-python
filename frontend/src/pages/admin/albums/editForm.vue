@@ -33,9 +33,9 @@ async function saveAlbum() {
     }
 }
 
-watch(() => {
-    console.log('tmp_album_items', tmp_album_items.value);
-})
+// watch(() => {
+//     console.log('tmp_album_items', tmp_album_items.value);
+// })
 
 const locDistances = ref([])
 const locations = computed(() => {

@@ -130,7 +130,8 @@ class AlbumDetail(View):
                        .order_by('order'))
         data['items'] = [item.to_dict() for item in album_items]
 
-        data['location_name'] = album.location.name
+        if album.location:
+            data['location_name'] = album.location.name
         data['tags'] = album.get_tags(album_items)
         return JsonResponse(data, safe=False)
 

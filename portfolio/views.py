@@ -165,10 +165,10 @@ class AlbumDetail(View):
 
 class AlbumUpload(View):
     image_sizes = [
-        300,
-        500,
+        600,
         800,
         1200,
+        1600,
         2000
     ]
     upload_folder = 'uploads/'

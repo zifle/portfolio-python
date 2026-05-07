@@ -117,7 +117,7 @@ function checkAndSetDates(dates) {
 
 function imagesUploaded(data) {
     if (data.hasOwnProperty('images')) {
-        emit('albumItems', data.images);
+        emit('albumItems', [...album.items, ...data.images]);
     }
 
     if (data.hasOwnProperty('locations')) {

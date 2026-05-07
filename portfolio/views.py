@@ -7,7 +7,8 @@ from PIL.Image import Exif
 from PIL.ImageFile import ImageFile
 from PIL.TiffImagePlugin import IFDRational
 from django.core.files.storage import Storage, storages
-from django.db.models import Count
+from django.db import connection
+from django.db.models import Count, prefetch_related_objects, Prefetch, F
 from django.forms.models import model_to_dict
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, get_object_or_404
@@ -18,7 +19,7 @@ from django.contrib.auth import login, logout, authenticate
 from PIL import Image, ExifTags, ImageOps
 from PIL.ExifTags import TAGS
 
-from portfolio.models import Album, Location, Camera, Lens, Category, Image as ImageModel
+from portfolio.models import Album, Location, Camera, Lens, Category, Image as ImageModel, AlbumItems, AlbumItem
 from portfolio.utils import get_mean_gps_position
 
 
@@ -102,7 +103,8 @@ class AlbumIndex(View):
             albums = Album.objects.all()
         else:
             albums = Album.objects.filter(published=True)
-        album_list = [album.to_dict() for album in albums]
+
+        album_list = [album.to_dict(exclude=['items']) for album in albums]
         return JsonResponse(album_list, safe=False)
 
     def post(self, request):
@@ -146,10 +148,20 @@ class AlbumDetail(View):
         if isinstance(id, int):
             album = get_object_or_404(Album, pk=id)
         elif isinstance(id, str):
-            album = get_object_or_404(Album, slug=id)
+            album = Album.objects.get(slug=id)
         if not album:
             return JsonResponse({'error': 'Album not found'}, status=404)
-        data = album.to_dict()
+
+        data = album.to_dict(exclude=['items'])
+        album_items = (album.items.annotate(order=F('albumitems__order'))
+                       .instance_of(ImageModel)
+                       .prefetch_related('camera')
+                       .prefetch_related('lens')
+                       .order_by('order'))
+        data['items'] = [item.to_dict() for item in album_items]
+
+        data['location_name'] = album.location.name
+        data['tags'] = album.get_tags(album_items)
         return JsonResponse(data, safe=False)
 
     def delete(self, request, id):

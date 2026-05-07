@@ -14,7 +14,6 @@ export const useCategoryStore = defineStore('categories', () => {
             credentials: 'include',
             headers: {
                 'Accept': 'application/json',
-                'X-CSRFToken': getCSRFToken(),
             }
         });
 

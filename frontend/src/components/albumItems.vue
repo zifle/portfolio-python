@@ -33,7 +33,8 @@ onUpdated(() => {
             columnWidth: '.grid-sizer',
             itemSelector: '.grid-item',
             percentPosition: true,
-            stagger: 0
+            stagger: 0,
+            initLayout: false
         });
         window.masonry = masonry;
     }
@@ -227,12 +228,11 @@ function closeGigante(i, img) {
 @media screen and (min-width: 800px) {
     .image-container {
         transition: 0.2s filter linear;
-        filter: contrast(85%) grayscale(20%);
+        filter: opacity(70%) grayscale(30%);
     }
 
     .image-container:hover {
-        opacity: 1;
-        filter: contrast(100%) grayscale(0%);
+        filter: opacity(100%) grayscale(0%);
     }
 }
 .image-container.gigante {
@@ -247,6 +247,7 @@ function closeGigante(i, img) {
 
 .grid-sizer, .grid-item {
     width: 100vw;
+    padding: 7px;
 }
 @media screen and (min-width: 800px) {
     .grid-sizer, .grid-item {

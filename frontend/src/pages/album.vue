@@ -3,6 +3,7 @@ import {onBeforeRouteUpdate, useRoute} from "vue-router";
 import {computed, onMounted, ref, useTemplateRef} from "vue";
 import {useAlbumStore} from "../store/albums.js";
 import AlbumItems from "../components/albumItems.vue";
+import AlbumDescription from "../components/albumDescription.vue";
 
 const route = useRoute();
 const albumStore = useAlbumStore();
@@ -25,13 +26,11 @@ onBeforeRouteUpdate((to, from) => {
 
 const loading = ref(false);
 function startLoading() {
-    console.log('showing spinner');
     loadSpinner.value.classList.remove('opacity-0');
     loadSpinner.value.classList.remove('d-none');
     loading.value = true;
 }
 function stopLoading() {
-    console.log('hiding spinner');
     loadSpinner.value.classList.add('opacity-0');
     setTimeout(() => {
         loadSpinner.value.classList.add('d-none');
@@ -50,6 +49,7 @@ const album_items = computed(() => {
 </script>
 
 <template>
+    <album-description :loading="loading" :album="album"></album-description>
     <album-items :loading="loading" :items="album_items"
                  @img-loaded="stopLoading"></album-items>
     <div class="d-flex position-fixed justify-content-center loading-spinner" ref="load-spinner">
@@ -62,6 +62,6 @@ const album_items = computed(() => {
 .loading-spinner {
     width: 100vw;
     left: 0;
-    top: 10vh;
+    top: 25vh;
 }
 </style>

@@ -5,22 +5,47 @@ import {getCSRFToken, useAuthStore} from "./auth.js";
 export const useLocationStore = defineStore('admin/locations', () => {
     const locations = ref([]);
 
+    let getLocationsPromise = null;
     async function getLocations(force = false) {
-        if (!force && locations.value.length > 0) {
+        if (getLocationsPromise) {
+            return await getLocationsPromise;
+        }
+        if (locations.value.length > 0 && !force) {
             return locations.value;
         }
-        const response = await fetch('/api/locations', {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRFToken': getCSRFToken(),
+
+        getLocationsPromise = new Promise(async (resolve, reject) => {
+            if (!force && locations.value.length > 0) {
+                return locations.value;
+            }
+            const response = await fetch('/api/locations', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                }
+            });
+            if (response.ok) {
+                const locs = await response.json();
+                locations.value = locs;
+                resolve(locs);
+                getLocationsPromise = null;
             }
         });
+        return await getLocationsPromise;
+    }
 
-        const locs = await response.json();
-        locations.value = locs;
-        return locs;
+    async function getLocation(id) {
+        if (getLocationsPromise) {
+            await getLocationsPromise;
+        }
+        if (locations.value.length > 0) {
+            const loc = locations.value.find(loc => loc.id === id);
+            if (loc) {
+                return loc;
+            }
+        }
+        return null;
     }
 
     async function saveLocation(location) {
@@ -61,6 +86,7 @@ export const useLocationStore = defineStore('admin/locations', () => {
     return {
         locations,
         getLocations,
+        getLocation,
         saveLocation,
         deleteLocation
     }

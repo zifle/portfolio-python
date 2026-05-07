@@ -287,15 +287,40 @@ class Album(models.Model):
     def __str__(self):
         return self.title
 
-    def to_dict(self) -> dict:
-        data = model_to_dict(self)
-
-        data['num_images'] = self.items.instance_of(Image).count()
-
-        album_items = self.items.annotate(order=F('albumitems__order')).order_by('order')
-        data['items'] = [item.to_dict() for item in album_items]
+    def to_dict(self, fields=None, exclude=None) -> dict:
+        data = model_to_dict(self, fields=fields, exclude=exclude)
 
         return data
+
+    def get_tags(self, items = None) -> list[str]:
+        tags = []
+
+        if self.category:
+            tags.append(str(self.category))
+        if self.location:
+            tags.append(str(self.location))
+        if self.date_start and self.date_end:
+            if self.date_start == self.date_end:
+                tags.append('One-day')
+            else:
+                tags.append('Multiple days')
+
+        cameras = set()
+        lenses = set()
+        if not items:
+            items = self.items.instance_of(Image).prefetch_related('camera').prefetch_related('lens')
+        for im in items:
+            if im.camera:
+                cameras.add(im.camera)
+            if im.lens:
+                lenses.add(im.lens)
+
+        for cam in cameras:
+            tags.append(str(cam))
+        for lens in lenses:
+            tags.append(str(lens))
+
+        return tags
 
     def set_album_items(self, items_data: list[dict]):
         """

@@ -1,6 +1,5 @@
 import {defineStore} from "pinia";
 import {ref} from "vue";
-import {getCSRFToken} from "./auth.js";
 
 export const useAlbumStore = defineStore('albums', () => {
     const albums = ref([]);
@@ -23,9 +22,9 @@ export const useAlbumStore = defineStore('albums', () => {
             });
             if (response.ok) {
                 const data = await response.json();
+                data.map(item => {item.details = false; return item;});
                 albums.value = data;
                 resolve(data);
-                return
             }
         })
         return getAlbumsPromise;
@@ -33,10 +32,14 @@ export const useAlbumStore = defineStore('albums', () => {
 
     async function getAlbum(slug) {
         await getAlbumsPromise;
+        let albumIdx = -1;
         if (albums.value.length > 0) {
-            const album = albums.value.find(a => a.slug === slug);
-            if (album) {
-                return album;
+            albumIdx = albums.value.findIndex(a => a.slug === slug);
+            if (albumIdx >= 0) {
+                const album = albums.value[albumIdx];
+                if (album.details) {
+                    return album;
+                }
             }
         }
         const response = await fetch(`/api/albums/${slug}`, {
@@ -47,7 +50,12 @@ export const useAlbumStore = defineStore('albums', () => {
         });
         if (response.ok) {
             const album = await response.json();
-            albums.value.push(album);
+            album.details = true;
+            if (albumIdx >= 0) {
+                albums.value[albumIdx] = album;
+            } else {
+                albums.value.push(album);
+            }
             return album;
         }
     }

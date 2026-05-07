@@ -37,13 +37,13 @@ function deleteAlbum(album) {
                     <span v-else class="text-danger">𐄂</span>
                 </button>
             </td>
-            <td>
+            <td class="text-end">
                 <router-link :to="{name: 'admin-album-edit', params: {id: album.id}}"
                              class="btn btn-outline-info me-3">
                     🖉
                 </router-link>
                 <button :disabled="album.published" class="btn btn-outline-danger me-3"
-                        @click="deleteAlbum(album)">&#128465;</button>
+                        @click="deleteAlbum(album)">🗑</button>
             </td>
         </tr>
         </tbody>

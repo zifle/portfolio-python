@@ -67,36 +67,6 @@ def user(request):
 
 # ------------------------    API Routes    ------------------------
 
-class CategoryIndex(View):
-    def get(self, request):
-        cats = Category.objects.annotate(num_albums=Count('album'))
-        cats_list = [cat.to_dict() for cat in cats]
-        return JsonResponse(cats_list, safe=False)
-
-    def post(self, request):
-        if not request.user.is_authenticated:
-            return JsonResponse({"message": "Not logged in"}, status=401)
-        data = json.loads(request.body.decode('utf-8'))
-        if 'id' in data and data['id'] > 0:
-            category = get_object_or_404(Category, pk=data['id'])
-            category.name = data['name']
-            category.order = data['order']
-        else:
-            category = Category.objects.create(name=data['name'], order=data['order'] or 0)
-        category.save()
-
-        data = category.to_dict()
-        return JsonResponse(data)
-
-class CategoryDetail(View):
-    def delete(self, request, id):
-        if not request.user.is_authenticated:
-            return HttpResponse("Not logged in", status=401)
-        category = get_object_or_404(Category, pk=id)
-        category.delete()
-        return HttpResponse("Deleted category", status=200)
-
-
 class AlbumIndex(View):
     def get(self, request):
         if request.user.is_authenticated:
@@ -443,6 +413,35 @@ class LocationsIndex(View):
 
         data = model_to_dict(location)
         return JsonResponse(data)
+
+class CategoryIndex(View):
+    def get(self, request):
+        cats = Category.objects.annotate(num_albums=Count('album'))
+        cats_list = [cat.to_dict() for cat in cats]
+        return JsonResponse(cats_list, safe=False)
+
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({"message": "Not logged in"}, status=401)
+        data = json.loads(request.body.decode('utf-8'))
+        if 'id' in data and data['id'] > 0:
+            category = get_object_or_404(Category, pk=data['id'])
+            category.name = data['name']
+            category.order = data['order']
+        else:
+            category = Category.objects.create(name=data['name'], order=data['order'] or 0)
+        category.save()
+
+        data = category.to_dict()
+        return JsonResponse(data)
+
+class CategoryDetail(View):
+    def delete(self, request, id):
+        if not request.user.is_authenticated:
+            return HttpResponse("Not logged in", status=401)
+        category = get_object_or_404(Category, pk=id)
+        category.delete()
+        return HttpResponse("Deleted category", status=200)
 
 def camerasIndex(request):
     return JsonResponse(list(Camera.objects.all()), safe=False)

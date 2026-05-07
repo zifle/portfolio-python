@@ -19,6 +19,27 @@ function saveNewCategory() {
             newCategory.value.order = 0;
         });
 }
+
+async function saveCategory(category) {
+    if (category.saving) return;
+    category.saving = true;
+    let catCopy = category;
+    if (category.hasOwnProperty('_edit')) {
+        catCopy = category._edit;
+    }
+
+    await catStore.saveCategory(catCopy);
+    category.saving = false;
+    category.edit = false;
+}
+
+function editCategory(category) {
+    category._edit = JSON.parse(JSON.stringify(category));
+    category.edit = true;
+}
+function cancelEdit(category) {
+    category.edit = false;
+}
 </script>
 
 <template>
@@ -27,6 +48,7 @@ function saveNewCategory() {
         <tr>
             <th>ID</th>
             <th>Name</th>
+            <th>Order</th>
             <th>Albums</th>
             <th></th>
         </tr>
@@ -34,10 +56,22 @@ function saveNewCategory() {
         <tbody>
         <tr v-for="cat in catStore.categories" :key="cat.id">
             <td>{{ cat.id }}</td>
-            <td>{{ cat.name }}</td>
-            <td>{{ cat.num_albums }}</td>
             <td>
-                <button class="btn btn-outline-danger" @click="catStore.deleteCategory(cat.id)">&#128465;</button>
+                <input v-if="cat.edit" type="text" v-model="cat._edit.name" :disabled="cat.saving"
+                        class="form-control" @keyup.enter="saveCategory(cat)" @keyup.esc="cancelEdit(cat)">
+                <template v-else>{{ cat.name }}</template>
+            </td>
+            <td>
+                <input v-if="cat.edit" type="number" v-model="cat._edit.order" :disabled="cat.saving"
+                        class="form-control" @keyup.enter="saveCategory(cat)" @keyup.esc="cancelEdit(cat)">
+                <template v-else>{{ cat.order }}</template>
+            </td>
+            <td>{{ cat.num_albums }}</td>
+            <td class="text-end">
+                <button v-if="!cat.edit" class="btn btn-info" @click="editCategory(cat)">🖉</button>
+                <button v-else class="btn btn-success" :disabled="cat.saving"
+                        @click="saveCategory(cat)">✓</button>
+                <button class="btn btn-outline-danger ms-3" @click="catStore.deleteCategory(cat.id)">🗑</button>
             </td>
         </tr>
         </tbody>

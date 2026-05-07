@@ -10,16 +10,38 @@ onMounted(() => {
 
 const newLocation = ref({
     name: '',
-    coordinate_lat: null,
-    coordinate_lng: null,
+    coords: null,
 });
-function saveNewCategory() {
-    locStore.saveLocation(newLocation.value)
+function saveNewLocation() {
+    saveLocation(newLocation.value)
         .then(() => {
             newLocation.value.name = '';
-            newLocation.value.coordinate_lat = null;
-            newLocation.value.coordinate_lng = null;
+            newLocation.value.coords = null;
         });
+}
+async function saveLocation(loc) {
+    if (loc.saving) return;
+    loc.saving = true;
+    let locCopy = loc;
+    if (loc.hasOwnProperty('_edit'))
+        locCopy = loc._edit;
+    if (locCopy.coords) {
+        const floats = locCopy.coords.split(',').map(c => parseFloat(c) || null);
+        [locCopy.coordinate_lat, locCopy.coordinate_lng] = floats;
+    }
+
+    await locStore.saveLocation(locCopy);
+    loc.saving = false;
+    loc.edit = false;
+}
+
+function editLocation(loc) {
+    loc._edit = JSON.parse(JSON.stringify(loc));
+    loc._edit.coords = loc.coordinate_lat+','+loc.coordinate_lng;
+    loc.edit = true;
+}
+function cancelEdit(loc) {
+    loc.edit = false;
 }
 </script>
 
@@ -37,33 +59,39 @@ function saveNewCategory() {
         <tbody>
         <tr v-for="loc in locStore.locations" :key="loc.id">
             <td>{{ loc.id }}</td>
-            <td>{{ loc.name }}</td>
             <td>
-                <template v-if="loc.coordinate_lat">
+                <input v-if="loc.edit" type="text" v-model="loc._edit.name" :disabled="loc.saving"
+                       class="form-control" @keyup.enter="saveLocation(loc)" @keyup.esc="cancelEdit(loc)">
+                <template v-else>{{ loc.name }}</template>
+            </td>
+            <td>
+                <template v-if="loc.edit">
+                    <input type="text" v-model="loc._edit.coords" :disabled="loc.saving"
+                        class="form-control" @keyup.enter="saveLocation(loc)" @keyup.esc="cancelEdit(loc)">
+                </template>
+                <template v-else-if="loc.coordinate_lat">
                     {{ loc.coordinate_lat }}, {{ loc.coordinate_lng }}
                 </template>
             </td>
             <td>{{ loc.num_albums }}</td>
-            <td>
-                <button class="btn btn-outline-danger" @click="locStore.deleteLocation(cat.id)">&#128465;</button>
+            <td class="text-end">
+                <button v-if="!loc.edit" class="btn btn-info" @click="editLocation(loc)">🖉</button>
+                <button v-else class="btn btn-success" :disabled="loc.saving"
+                        @click="saveLocation(loc)">✓</button>
+                <button class="btn btn-outline-danger ms-3" @click="locStore.deleteLocation(loc.id)">🗑</button>
             </td>
         </tr>
         </tbody>
     </table>
-    <form @submit.prevent="saveNewCategory()" class="row row-cols-lg-auto g-3 align-items-center">
+    <form @submit.prevent="saveNewLocation()" class="row row-cols-lg-auto g-3 align-items-center">
         <div class="col-12">
-            <label for="new-loc-name" class="visually-hidden">Category name</label>
+            <label for="new-loc-name" class="visually-hidden">Location name</label>
             <input type="text" v-model="newLocation.name" class="form-control" id="new-cat-name" placeholder="Location name">
         </div>
         
         <div class="col-12">
             <label for="new-loc-lat" class="visually-hidden">Latitude</label>
-            <input type="text" v-model="newLocation.coordinate_lat" class="form-control" id="new-cat-lat" placeholder="Latitude">
-        </div>
-
-        <div class="col-12">
-            <label for="new-loc-lng" class="visually-hidden">Longitude</label>
-            <input type="text" v-model="newLocation.coordinate_lng" class="form-control" id="new-cat-lng" placeholder="Longitude">
+            <input type="text" v-model="newLocation.coords" class="form-control" id="new-loc-lat" placeholder="Latitude,Longitude">
         </div>
 
         <div class="col-12">

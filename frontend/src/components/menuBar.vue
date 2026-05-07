@@ -90,8 +90,8 @@ watch(() => {
                     </li>
                     <li class="nav-item">
                         <span class="nav-link clickable" @click="authStore.logout(router)" aria-label="Logout">
-                            &#128682;
                             <span class="d-lg-none">Logout</span>
+                            ➜]
                         </span>
                     </li>
                 </ul>

@@ -15,9 +15,6 @@ export const useLocationStore = defineStore('admin/locations', () => {
         }
 
         getLocationsPromise = new Promise(async (resolve, reject) => {
-            if (!force && locations.value.length > 0) {
-                return locations.value;
-            }
             const response = await fetch('/api/locations', {
                 method: 'GET',
                 credentials: 'include',

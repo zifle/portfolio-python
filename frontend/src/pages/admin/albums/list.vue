@@ -20,7 +20,6 @@ function deleteAlbum(album) {
         <tr>
             <th>ID</th>
             <th>Title</th>
-            <th>Images</th>
             <th>Published</th>
             <th></th>
         </tr>
@@ -29,7 +28,6 @@ function deleteAlbum(album) {
         <tr v-for="album in albumStore.albums" :key="album.id">
             <td>{{ album.id }}</td>
             <td>{{ album.title }}</td>
-            <td>{{ album.num_images }}</td>
             <td>
                 <button type="button" class="btn btn-sm" @click="albumStore.togglePublished(album)"
                     :class="{'btn-outline-success': album.published, 'btn-outline-danger': !album.published}">

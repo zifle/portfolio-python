@@ -4,8 +4,10 @@ import {computed, onMounted, ref, watch} from "vue";
 import {useCategoryStore} from "../../../store/categories.js";
 import {useLocationStore} from "../../../store/locations.js";
 import Items from "./items.vue";
+import {useAlbumStore} from "../../../store/albums.js";
 
 const albumStore = useAdminAlbumStore();
+const publicAlbumStore = useAlbumStore();
 const catStore = useCategoryStore();
 const locStore = useLocationStore();
 
@@ -28,6 +30,7 @@ async function saveAlbum() {
         if (new_album) {
             emit("albumSaved", new_album);
         }
+        publicAlbumStore.getAlbums(true);
     } finally {
         saving.value = false;
     }

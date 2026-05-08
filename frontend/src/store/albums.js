@@ -5,15 +5,14 @@ export const useAlbumStore = defineStore('albums', () => {
     const albums = ref([]);
 
     let getAlbumsPromise = null;
-    function getAlbums() {
+    async function getAlbums(force = false) {
         if (getAlbumsPromise) {
-            return getAlbumsPromise;
+            return await getAlbumsPromise;
+        }
+        if (albums.value.length > 0 && !force) {
+            return albums.value;
         }
         getAlbumsPromise = new Promise(async (resolve, reject) => {
-            if (albums.value.length > 0) {
-                resolve(albums.value);
-                return
-            }
             const response = await fetch('/api/albums', {
                 method: 'GET',
                 headers: {
@@ -25,9 +24,10 @@ export const useAlbumStore = defineStore('albums', () => {
                 data.map(item => {item.details = false; return item;});
                 albums.value = data;
                 resolve(data);
+                getAlbumsPromise = null;
             }
         })
-        return getAlbumsPromise;
+        return await getAlbumsPromise;
     }
 
     async function getAlbum(slug) {

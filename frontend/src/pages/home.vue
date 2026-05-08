@@ -17,7 +17,14 @@ authStore.fetchUser()
 </script>
 
 <template>
-    <h1>Welcome to home</h1>
-    <p v-if="authStore.isAuthenticated">You are authed</p>
-    <p v-else>You are not logged in. <router-link :to="{name:'login'}">Log in</router-link></p>
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <h1 class="text-center">Welcome to my portfolio!</h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col text-center">Please check out my photos, by clicking any of the albums in the menu!</div>
+        </div>
+    </div>
 </template>

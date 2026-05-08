@@ -1,19 +1,5 @@
 <script setup>
-import {useAuthStore} from '../store/auth.js'
-import {useRouter} from 'vue-router'
 
-const authStore = useAuthStore()
-const router = useRouter()
-
-async function logout() {
-    try {
-        await authStore.logout(router)
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-authStore.fetchUser()
 </script>
 
 <template>

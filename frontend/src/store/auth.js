@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia';
 import {ref} from "vue";
+import {useAlbumStore} from "./albums.js";
 
 export const useAuthStore = defineStore('auth', () => {
     const storedState = localStorage.getItem('authState');
@@ -34,12 +35,14 @@ export const useAuthStore = defineStore('auth', () => {
         const data = await response.json();
         if (data.success) {
             isAuthenticated.value = true;
-            saveState()
+            saveState();
             if (router) {
                 await router.push({
                     name: 'admin'
                 });
             }
+            const albumStore = useAlbumStore();
+            albumStore.getAlbums(true);
         } else {
             user.value = null;
             isAuthenticated.value = false;
@@ -65,6 +68,8 @@ export const useAuthStore = defineStore('auth', () => {
                         name: 'home',
                     })
                 }
+                const albumStore = useAlbumStore();
+                albumStore.getAlbums(true);
             }
         } catch (error) {
             console.error('Logout failed', error)

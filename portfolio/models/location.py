@@ -23,7 +23,10 @@ class Location(models.Model):
         return self.name
 
     def __repr__(self):
-        return f'{self.name} <{self.coordinate_lat},{self.coordinate_lng}>'
+        dist = ''
+        if hasattr(self, 'distance'):
+            dist = f' ({self.distance:1.3f} km)'
+        return f'{self.name} <{self.coordinate_lat},{self.coordinate_lng}>{dist}'
 
     def to_dict(self) -> dict:
         data = model_to_dict(self)
@@ -59,7 +62,7 @@ class Location(models.Model):
                                         * Cos(Radians(F('coordinate_lng')) - Radians(pos_lng)) + Sin(Radians(pos_lat))
                                         * Sin(Radians(F('coordinate_lat')))))
 
-        locations = cls.objects.annotate(distance=where).filter(distance__lte=max_distance_km)
+        locations = cls.objects.annotate(distance=where).filter(distance__lte=max_distance_km).order_by('distance')
 
         return locations
 

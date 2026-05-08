@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import QuerySet, F
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.forms import model_to_dict
@@ -36,6 +37,23 @@ class Album(models.Model):
     def to_dict(self, fields=None, exclude=None) -> dict:
         data = model_to_dict(self, fields=fields, exclude=exclude)
 
+        return data
+
+    def get_items_in_order(self) -> QuerySet:
+        return (self.items.annotate(order=F('albumitems__order'))
+                       .instance_of(Image)
+                       .prefetch_related('camera')
+                       .prefetch_related('lens')
+                       .order_by('order'))
+
+    def get_detailed_dict(self) -> dict:
+        data = self.to_dict(exclude=['items'])
+        album_items = self.get_items_in_order()
+        data['items'] = [item.to_dict() for item in album_items]
+
+        if self.location:
+            data['location_name'] = self.location.name
+        data['tags'] = self.get_tags(album_items)
         return data
 
     def get_tags(self, items = None) -> list[str]:

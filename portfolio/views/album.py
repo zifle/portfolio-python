@@ -1,5 +1,3 @@
-import os
-from datetime import datetime
 import io
 import json
 
@@ -8,15 +6,13 @@ from django.db.models import F
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.views import View
-from PIL.Image import Exif
 from PIL.ImageFile import ImageFile
-from PIL.TiffImagePlugin import IFDRational
-from PIL import Image, ExifTags, ImageOps
-from PIL.ExifTags import TAGS
+from PIL import Image as PILImage, ExifTags
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
-from portfolio.models import Album, Category, Location, Image as ImageModel, Camera, Lens
+from portfolio.models import Album, Category, Location, Image
+from portfolio.utils import resize_image, get_image_path, exif_to_dict
 
 
 class AlbumIndex(View):
@@ -61,7 +57,7 @@ class AlbumIndex(View):
         album.save()
         album.set_album_items(items)
 
-        data = album.to_dict()
+        data = album.get_detailed_dict()
         return JsonResponse(data)
 
 class AlbumDetail(View):
@@ -74,17 +70,7 @@ class AlbumDetail(View):
         if not album:
             return JsonResponse({'error': 'Album not found'}, status=404)
 
-        data = album.to_dict(exclude=['items'])
-        album_items = (album.items.annotate(order=F('albumitems__order'))
-                       .instance_of(ImageModel)
-                       .prefetch_related('camera')
-                       .prefetch_related('lens')
-                       .order_by('order'))
-        data['items'] = [item.to_dict() for item in album_items]
-
-        if album.location:
-            data['location_name'] = album.location.name
-        data['tags'] = album.get_tags(album_items)
+        data = album.get_detailed_dict()
         return JsonResponse(data, safe=False)
 
     def delete(self, request, id):
@@ -112,25 +98,25 @@ class AlbumUpload(View):
         if not request.user.is_authenticated:
             return JsonResponse({"message": "Not logged in"}, status=401)
 
-        imglist: list[ImageModel] = []
+        img_list: list[Image] = []
         gps_coords = []
         for img in request.FILES:
             img_file = request.FILES[img]
             store = storages['staticfiles']
-            img_model = ImageModel()
+            img_model = Image()
             try:
-                with Image.open(io.BytesIO(img_file.read())) as im:
+                with PILImage.open(io.BytesIO(img_file.read())) as im:
                     exif = im.getexif()
-                    fname = self.get_image_path(img_file.name, store)
-                    img_model.path = fname
-                    exif_dict = self.img_exif_dict(exif)
-                    self.set_exif_params(img_model, exif_dict)
-                    duplicate = self.has_duplicate_image(img_model)
+                    file_save_path = get_image_path(img_file.name, store, upload_folder=self.upload_folder)
+                    img_model.path = file_save_path
+                    exif_dict = exif_to_dict(exif)
+                    img_model.set_exif_params(exif_dict)
+                    duplicate = img_model.has_duplicate()
                     if duplicate:
                         del img_model
                         img_model = duplicate
                     else:
-                        resizes = self.make_image_resizes(im, fname, store)
+                        resizes = self.make_image_resizes(im, file_save_path, store)
                         img_model.available_res = resizes['available_sizes']
                         img_model.max_width = resizes['max_width']
                         img_model.max_height = resizes['max_height']
@@ -138,16 +124,17 @@ class AlbumUpload(View):
                 return JsonResponse({"message": f"Uploaded file not an image!: {e}"}, status=400)
 
             img_model.save()
-            imglist.append(img_model)
+            if isinstance(img_model, Image): # Check should be redundant, but IDE is complaining
+                img_list.append(img_model)
             if exif_dict['gps_lat'] and exif_dict['gps_lng']:
                 gps_coords.append((exif_dict['gps_lat'], exif_dict['gps_lng']))
 
         locations = Location.get_nearby(gps_coords)
-        cameras = {im.camera for im in imglist if im.camera is not None}
-        lenses = {im.lens for im in imglist if im.lens is not None}
+        cameras = {im.camera for im in img_list if im.camera is not None}
+        lenses = {im.lens for im in img_list if im.lens is not None}
         locs = sorted([loc.to_dict() for loc in locations], key=lambda loc: loc['distance'])
         dates = set()
-        for im in imglist:
+        for im in img_list:
             if im.date_taken:
                 dates.add(im.date_taken.date())
             else:
@@ -157,63 +144,10 @@ class AlbumUpload(View):
             "success": True,
             "cameras": [camera.to_dict() for camera in cameras],
             "lenses": [lens.to_dict() for lens in lenses],
-            "images": [i.to_dict() for i in imglist],
+            "images": [i.to_dict() for i in img_list],
             "locations": locs,
             "dates": sorted(list(dates)),
         })
-
-    @staticmethod
-    def img_exif_dict(exif: Exif) -> dict[str, None|str|float|int]:
-        gps_info = exif.get_ifd(ExifTags.IFD.GPSInfo)
-        exifDict: dict[str, None|str|float|int] = {
-            'gps_lat': None,
-            'gps_lng': None,
-        }
-        if len(gps_info) > 0:
-            # Fetch the GPS info, if available
-            def decimal_coords(coords, ref):
-                decimal_degrees = float(coords[0]) + float(coords[1]) / 60 + float(coords[2]) / 3600
-                if ref == "S" or ref == 'W':
-                    decimal_degrees = -1 * decimal_degrees
-                return decimal_degrees
-
-            exifDict['gps_lat'] = decimal_coords(gps_info[2], gps_info[1])
-            exifDict['gps_lng'] = decimal_coords(gps_info[4], gps_info[3])
-
-        for k, v in exif.items():
-            tag_name = TAGS.get(k, k)
-            if isinstance(v, str) or isinstance(v, int) or isinstance(v, float):
-                exifDict[tag_name] = v
-
-        # Get extra data from the EXIF IFD (includes things like lens model, etc.)
-        exif_ifd = exif.get_ifd(ExifTags.IFD.Exif)
-        for k, v in exif_ifd.items():
-            tag_name = TAGS.get(k, k)
-            if isinstance(v, str) or isinstance(v, int) or isinstance(v, float):
-                exifDict[tag_name] = v
-            elif isinstance(v, IFDRational):
-                exifDict[tag_name] = int(v.numerator)/v.denominator
-                exifDict[tag_name+'_repr'] = repr(v)
-
-        return exifDict
-
-    @staticmethod
-    def resize_image(im: ImageFile, max_width=2000):
-        """
-        Resize the image, keeping its aspect ratio, to the desired width.
-        Note that images may be taller than the max_width specified.
-        """
-        image = ImageOps.contain(im, (max_width, max_width*3))
-        return image
-
-    @classmethod
-    def get_image_path(cls, filename:str, store:Storage):
-        # Strip the file type from the name, so we can append size suffix
-        filename = '.'.join(filename.lower().split('.')[:-1])
-        date = datetime.today().strftime('%Y%m%d')
-        upload_folder = cls.upload_folder
-        os.makedirs(store.path(upload_folder + date), exist_ok=True)
-        return f'{date}/{filename}_{{0}}w.jpg'
 
     @classmethod
     def make_image_resizes(cls, im:ImageFile, fname:str, store:Storage) -> dict[str, str|int|list[int]]:
@@ -239,7 +173,7 @@ class AlbumUpload(View):
 
         upload_folder = cls.upload_folder
         for max_dimension in cls.image_sizes:
-            img = cls.resize_image(im.copy(), max_dimension)
+            img = resize_image(im.copy(), max_dimension)
             if img.height > resizes['max_height']:
                 resizes['max_height'] = img.height
             if img.width > resizes['max_width']:
@@ -249,80 +183,9 @@ class AlbumUpload(View):
             img.save(storePath)
         return resizes
 
-    @staticmethod
-    def set_exif_params(model: ImageModel, exif: dict[str, None|str|float|int]):
-        if 'Make' in exif and 'Model' in exif:
-            camera_brand = exif['Make']
-            camera_model = exif['Model']
-            camera, _ = Camera.objects.get_or_create(brand=camera_brand, model=camera_model)
-            model.camera = camera
-
-        if 'LensMake' in exif:
-            lens_brand = str(exif['LensMake']).strip()
-            lens_model = str(exif['LensModel']).strip(' \u0000')
-            lens, _ = Lens.objects.get_or_create(brand=lens_brand, model=lens_model)
-            model.lens = lens
-
-        try:
-            date_taken = None
-            if 'DateTimeOriginal' in exif:
-                date_taken = exif['DateTimeOriginal']
-            elif 'DateTime' in exif:
-                date_taken = exif['DateTime']
-            elif 'DateTimeDigitized' in exif:
-                date_taken = exif['DateTimeDigitized']
-
-            if 'OffsetTimeOriginal' in exif:
-                time_offset = exif['OffsetTimeOriginal']
-            elif 'OffsetTime' in exif:
-                time_offset = exif['OffsetTime']
-            else:
-                time_offset = '+0000'
-
-            if date_taken:
-                # Create a UTC Datetime from the two values
-                dt = f'{date_taken} {time_offset.replace(':', '')}'
-                date = datetime.strptime(dt, '%Y:%m:%d %H:%M:%S %z')
-                model.date_taken = date
-        except KeyError:
-            pass
-
-        if 'FocalLength' in exif:
-            model.focal_length = exif['FocalLength']
-
-        if 'FocalLengthIn35mmFilm' in exif:
-            model.focal_length_35 = exif['FocalLengthIn35mmFilm']
-
-        if 'ExposureTime' in exif:
-            model.exposure_time = f'1/{1/exif['ExposureTime']}'
-
-        if 'ExposureBiasValue' in exif:
-            model.exposure_compensation = exif['ExposureBiasValue']
-
-        if 'FNumber' in exif:
-            model.aperture = exif['FNumber']
-
-    @staticmethod
-    def has_duplicate_image(img: ImageModel) -> ImageModel|None:
-        """
-        Check the DB for a saved Image with the same filename and date_taken.
-        If there's a match, it's most likely the same exact image being reuploaded,
-        and we can simply return the existing image instance instead of handling it again.
-        """
-        path = img.path.split('/')[1]
-        date_taken = img.date_taken
-        try:
-            existing = ImageModel.objects.get(date_taken=date_taken, path__endswith=path)
-            return existing
-        except ImageModel.DoesNotExist:
-            pass
-        except ImageModel.MultipleObjectsReturned:
-            return ImageModel.objects.filter(date_taken=date_taken, path__endswith=path).first()
-        return None
-
 @ensure_csrf_cookie
 @require_http_methods(['POST'])
-def albumTogglePublish(request, id:int):
+def album_toggle_publish(request, id:int):
     if not request.user.is_authenticated:
         return HttpResponse("Not logged in", status=401)
     album = get_object_or_404(Album, pk=id)

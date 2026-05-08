@@ -59,12 +59,12 @@ function cancelEdit(category) {
             <td>
                 <input v-if="cat.edit" type="text" v-model="cat._edit.name" :disabled="cat.saving"
                         class="form-control" @keyup.enter="saveCategory(cat)" @keyup.esc="cancelEdit(cat)">
-                <template v-else>{{ cat.name }}</template>
+                <span v-else @dblclick="editCategory(cat)">{{ cat.name }}</span>
             </td>
             <td>
                 <input v-if="cat.edit" type="number" v-model="cat._edit.order" :disabled="cat.saving"
                         class="form-control" @keyup.enter="saveCategory(cat)" @keyup.esc="cancelEdit(cat)">
-                <template v-else>{{ cat.order }}</template>
+                <span v-else @dblclick="editCategory(cat)">{{ cat.order }}</span>
             </td>
             <td>{{ cat.num_albums }}</td>
             <td class="text-end">

@@ -62,16 +62,16 @@ function cancelEdit(loc) {
             <td>
                 <input v-if="loc.edit" type="text" v-model="loc._edit.name" :disabled="loc.saving"
                        class="form-control" @keyup.enter="saveLocation(loc)" @keyup.esc="cancelEdit(loc)">
-                <template v-else>{{ loc.name }}</template>
+                <span v-else @dblclick="editLocation(loc)">{{ loc.name }}</span>
             </td>
             <td>
                 <template v-if="loc.edit">
                     <input type="text" v-model="loc._edit.coords" :disabled="loc.saving"
                         class="form-control" @keyup.enter="saveLocation(loc)" @keyup.esc="cancelEdit(loc)">
                 </template>
-                <template v-else-if="loc.coordinate_lat">
+                <span v-else-if="loc.coordinate_lat" @dblclick="editLocation(loc)">
                     {{ loc.coordinate_lat }}, {{ loc.coordinate_lng }}
-                </template>
+                </span>
             </td>
             <td>{{ loc.num_albums }}</td>
             <td class="text-end">

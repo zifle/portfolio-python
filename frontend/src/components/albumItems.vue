@@ -34,6 +34,7 @@ onUpdated(() => {
             itemSelector: '.grid-item',
             percentPosition: true,
             stagger: 0,
+            gutter: 7,
             initLayout: false
         });
         window.masonry = masonry;
@@ -224,7 +225,7 @@ function closeGigante(i, img) {
     </div>
 </template>
 
-<style>
+<style lang="scss">
 @media screen and (min-width: 800px) {
     .image-container {
         transition: 0.2s filter linear;
@@ -245,13 +246,14 @@ function closeGigante(i, img) {
     transition: opacity .3s;
 }
 
+$gutter: 7px;
 .grid-sizer, .grid-item {
     width: 100vw;
-    padding: 7px;
+    margin-bottom: $gutter;
 }
 @media screen and (min-width: 800px) {
     .grid-sizer, .grid-item {
-        width: 50vw;
+        width: calc(50vw - $gutter);
     }
     .grid-item--width-2 {
         width: 100vw;
@@ -259,18 +261,18 @@ function closeGigante(i, img) {
 }
 @media screen and (min-width: 1200px) {
     .grid-sizer, .grid-item {
-        width: 33.3vw;
+        width: calc(100vw / 3 - $gutter);
     }
     .grid-item--width-2 {
-        width: 66.6vw;
+        width: calc(100vw / 3 * 2 - $gutter);
     }
 }
 @media screen and (min-width: 1600px) {
     .grid-sizer, .grid-item {
-        width: 25vw;
+        width: calc(25vw - $gutter);
     }
     .grid-item--width-2 {
-        width: 50vw;
+        width: calc(50vw - $gutter);
     }
 }
 

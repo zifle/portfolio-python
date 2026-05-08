@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db import models
 from django.forms import model_to_dict
 
@@ -81,3 +83,73 @@ class Image(AlbumItem):
             data['order'] = self.order
 
         return data
+
+    def has_duplicate(self) -> AlbumItem|None:
+        """
+        Check the DB for a saved Image with the same filename and date_taken.
+        If there's a match, it's most likely the same exact image being reuploaded,
+        and we can simply return the existing image instance instead of handling it again.
+        """
+        path = self.path.split('/')[1]
+        date_taken = self.date_taken
+        try:
+            existing = Image.objects.get(date_taken=date_taken, path__endswith=path)
+            return existing
+        except Image.DoesNotExist:
+            pass
+        except Image.MultipleObjectsReturned:
+            return Image.objects.filter(date_taken=date_taken, path__endswith=path).first()
+        return None
+
+    def set_exif_params(self, exif: dict[str, None|str|float|int]):
+        if 'Make' in exif and 'Model' in exif:
+            camera_brand = exif['Make']
+            camera_model = exif['Model']
+            camera, _ = Camera.objects.get_or_create(brand=camera_brand, model=camera_model)
+            self.camera = camera
+
+        if 'LensMake' in exif:
+            lens_brand = str(exif['LensMake']).strip()
+            lens_model = str(exif['LensModel']).strip(' \u0000')
+            lens, _ = Lens.objects.get_or_create(brand=lens_brand, model=lens_model)
+            self.lens = lens
+
+        try:
+            date_taken = None
+            if 'DateTimeOriginal' in exif:
+                date_taken = exif['DateTimeOriginal']
+            elif 'DateTime' in exif:
+                date_taken = exif['DateTime']
+            elif 'DateTimeDigitized' in exif:
+                date_taken = exif['DateTimeDigitized']
+
+            if 'OffsetTimeOriginal' in exif:
+                time_offset = exif['OffsetTimeOriginal']
+            elif 'OffsetTime' in exif:
+                time_offset = exif['OffsetTime']
+            else:
+                time_offset = '+0000'
+
+            if date_taken:
+                # Create a UTC Datetime from the two values
+                dt = f'{date_taken} {time_offset.replace(':', '')}'
+                date = datetime.strptime(dt, '%Y:%m:%d %H:%M:%S %z')
+                self.date_taken = date
+        except KeyError:
+            pass
+
+        if 'FocalLength' in exif:
+            self.focal_length = exif['FocalLength']
+
+        if 'FocalLengthIn35mmFilm' in exif:
+            self.focal_length_35 = exif['FocalLengthIn35mmFilm']
+
+        if 'ExposureTime' in exif:
+            val = exif['ExposureTime']
+            self.exposure_time = f'1/{round(1/val)}'
+
+        if 'ExposureBiasValue' in exif:
+            self.exposure_compensation = exif['ExposureBiasValue']
+
+        if 'FNumber' in exif:
+            self.aperture = exif['FNumber']

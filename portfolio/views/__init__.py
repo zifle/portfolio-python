@@ -9,7 +9,7 @@ from .album import (
     AlbumIndex,
     AlbumDetail,
     AlbumUpload,
-    albumTogglePublish,
+    album_toggle_publish,
 )
 from .location import LocationsIndex
 from .category import (

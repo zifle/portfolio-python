@@ -3,69 +3,21 @@ from datetime import datetime
 import io
 import json
 
+from django.core.files.storage import storages, Storage
+from django.db.models import F
+from django.http import JsonResponse, HttpResponse
+from django.shortcuts import get_object_or_404
+from django.views import View
 from PIL.Image import Exif
 from PIL.ImageFile import ImageFile
 from PIL.TiffImagePlugin import IFDRational
-from django.core.files.storage import Storage, storages
-from django.db import connection
-from django.db.models import Count, prefetch_related_objects, Prefetch, F
-from django.forms.models import model_to_dict
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render, get_object_or_404
-from django.views import View
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_http_methods
-from django.contrib.auth import login, logout, authenticate
 from PIL import Image, ExifTags, ImageOps
 from PIL.ExifTags import TAGS
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
 
-from portfolio.models import Album, Location, Camera, Lens, Category, Image as ImageModel, AlbumItems, AlbumItem
-from portfolio.utils import get_mean_gps_position
+from portfolio.models import Album, Category, Location, Image as ImageModel, Camera, Lens
 
-
-# Create your views here.
-
-def index_view(request, resource):
-    return render(request, 'dist/index.html', {})
-
-# ------------------------    Authentication    ------------------------
-@ensure_csrf_cookie
-@require_http_methods(['GET'])
-def set_csrf_token(request):
-    """We set the CSRF cookie on the frontend"""
-    return JsonResponse({"message": "CSRF cookie set"})
-
-@require_http_methods(['POST'])
-def login_view(request):
-    try:
-        data = json.loads(request.body.decode('utf-8'))
-        username = data['username']
-        pw = data['password']
-    except json.JSONDecodeError:
-        return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
-
-    user = authenticate(request, username=username, password=pw)
-
-    if user:
-        login(request, user)
-        return JsonResponse({"success": True})
-    return JsonResponse({"success": False, "message": "Invalid credentials"}, status=401)
-
-def logout_view(request):
-    logout(request)
-    return JsonResponse({"message": "Logged out"})
-
-@require_http_methods(['GET'])
-def user(request):
-    if request.user.is_authenticated:
-        return JsonResponse({"username": request.user.username, "email": request.user.email})
-    return JsonResponse({"message": "Not logged in"}, status=401)
-
-
-
-
-
-# ------------------------    API Routes    ------------------------
 
 class AlbumIndex(View):
     def get(self, request):
@@ -155,14 +107,6 @@ class AlbumUpload(View):
         2000
     ]
     upload_folder = 'uploads/'
-
-    def get(self, request, id):
-        """Temporary test method for location suggestion code"""
-        lat = 55.6897079
-        lng = 12.6003911
-        sLocations = Location.get_nearby([(lat, lng)])
-        locations = [loc.to_dict() for loc in sLocations]
-        return JsonResponse(locations, safe=False)
 
     def post(self, request, id):
         if not request.user.is_authenticated:
@@ -387,66 +331,3 @@ def albumTogglePublish(request, id:int):
         album.published = False
     album.save()
     return JsonResponse({"success": True})
-
-
-class LocationsIndex(View):
-    def get(self, request):
-        locs = Location.objects.annotate(num_albums=Count('album'))
-        locs_list = [loc.to_dict() for loc in locs]
-        return JsonResponse(locs_list, safe=False)
-
-    def post(self, request):
-        if not request.user.is_authenticated:
-            return JsonResponse({"message": "Not logged in"}, status=401)
-        data = json.loads(request.body.decode('utf-8'))
-        if 'id' in data and data['id'] > 0:
-            location = get_object_or_404(Location, pk=data['id'])
-            location.name = data['name']
-            location.coordinate_lat = data['coordinate_lat']
-            location.coordinate_lng = data['coordinate_lng']
-        else:
-            location = Location.objects.create(
-                name=data['name'],
-                coordinate_lat=data['coordinate_lat'],
-                coordinate_lng=data['coordinate_lng'],
-            )
-        location.save()
-
-        data = model_to_dict(location)
-        return JsonResponse(data)
-
-class CategoryIndex(View):
-    def get(self, request):
-        cats = Category.objects.annotate(num_albums=Count('album'))
-        cats_list = [cat.to_dict() for cat in cats]
-        return JsonResponse(cats_list, safe=False)
-
-    def post(self, request):
-        if not request.user.is_authenticated:
-            return JsonResponse({"message": "Not logged in"}, status=401)
-        data = json.loads(request.body.decode('utf-8'))
-        if 'id' in data and data['id'] > 0:
-            category = get_object_or_404(Category, pk=data['id'])
-            category.name = data['name']
-            category.order = data['order']
-        else:
-            category = Category.objects.create(name=data['name'], order=data['order'] or 0)
-        category.save()
-
-        data = category.to_dict()
-        return JsonResponse(data)
-
-class CategoryDetail(View):
-    def delete(self, request, id):
-        if not request.user.is_authenticated:
-            return HttpResponse("Not logged in", status=401)
-        category = get_object_or_404(Category, pk=id)
-        category.delete()
-        return HttpResponse("Deleted category", status=200)
-
-def camerasIndex(request):
-    return JsonResponse(list(Camera.objects.all()), safe=False)
-
-def lensIndex(request):
-    return JsonResponse(list(Lens.objects.all()), safe=False)
-

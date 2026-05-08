@@ -202,6 +202,10 @@ function getDragAfterElement(target, container) {
         <label for="file-upload">Upload Images</label>
         <input type="file" multiple class="form-control" id="file-upload" ref="fileUpload">
     </div>
+
+    <div v-if="uploading" class="uploading position-fixed">
+        Uploading images ...
+    </div>
 </template>
 
 <style scoped>
@@ -243,5 +247,13 @@ function getDragAfterElement(target, container) {
 }
 .over.drop-right::after {
     background-color: rgba(0,255,0,0.3);
+}
+
+.uploading {
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background-color: var(--bs-body-bg);
+    border: 2px solid var(--bs-border-color);
 }
 </style>

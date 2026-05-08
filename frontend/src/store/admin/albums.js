@@ -58,6 +58,7 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
             });
             if (response.ok) {
                 const data = await response.json();
+                getAlbums(true);
                 if (album.id !== data.id) {
                     await router.push({name: 'admin-album-edit', params: {id: data.id}});
                 } else {

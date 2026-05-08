@@ -62,11 +62,11 @@ onUpdated(() => {
 const gridBreakpoints = {
     // From 0-800 use 1 column
     800: 1,
-    // From 800-1200 use 2 columns
-    1200: 2,
-    // From 1200-1600 use 3 columns
-    1600: 3,
-    // Above 1600 use 4 columns
+    // From 800-1200 use 3 columns
+    1200: 3,
+    // From 1200-1600 use 4 columns
+    1600: 4,
+    // Above 1600 use 5 columns
 };
 const getGridWidth = () => {
     return Math.ceil(window.innerWidth / numCols.value);
@@ -75,11 +75,11 @@ const getNumCols = () => {
     const vw = window.innerWidth;
     let cols = 1;
     if (vw >= 800 && vw < 1200) {
-        cols = 2;
-    } else if (vw >= 1200 && vw < 1600) {
         cols = 3;
-    } else if (vw >= 1600) {
+    } else if (vw >= 1200 && vw < 1600) {
         cols = 4;
+    } else if (vw >= 1600) {
+        cols = 5;
     }
     return cols
 }
@@ -252,27 +252,30 @@ $gutter: 7px;
     margin-bottom: $gutter;
 }
 @media screen and (min-width: 800px) {
+    $cols: 3;
     .grid-sizer, .grid-item {
-        width: calc(50vw - $gutter);
+        width: calc(100vw / $cols - $gutter);
     }
     .grid-item--width-2 {
-        width: 100vw;
+        width: calc(100vw / $cols * 2 - $gutter);
     }
 }
 @media screen and (min-width: 1200px) {
+    $cols: 4;
     .grid-sizer, .grid-item {
-        width: calc(100vw / 3 - $gutter);
+        width: calc(100vw / $cols - $gutter);
     }
     .grid-item--width-2 {
-        width: calc(100vw / 3 * 2 - $gutter);
+        width: calc(100vw / $cols * 2 - $gutter);
     }
 }
 @media screen and (min-width: 1600px) {
+    $cols: 5;
     .grid-sizer, .grid-item {
-        width: calc(25vw - $gutter);
+        width: calc(100vw / $cols - $gutter);
     }
     .grid-item--width-2 {
-        width: calc(50vw - $gutter);
+        width: calc(100vw / $cols * 2 - $gutter);
     }
 }
 

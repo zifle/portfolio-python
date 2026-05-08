@@ -54,7 +54,7 @@ class Location(models.Model):
         # ORDER BY distance;
         max_distance_km = 10
         earth_radius_km = 6371
-        pos_lat, pos_lng = get_mean_gps_position(gps_coords)
+        pos_lat, pos_lng = cls.get_mean_gps_position(gps_coords)
         where = (earth_radius_km * ACos(Cos(Radians(pos_lat)) * Cos(Radians(F('coordinate_lat')))
                                         * Cos(Radians(F('coordinate_lng')) - Radians(pos_lng)) + Sin(Radians(pos_lat))
                                         * Sin(Radians(F('coordinate_lat')))))

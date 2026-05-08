@@ -224,16 +224,18 @@ class AlbumUpload(View):
             'max_width': 0,
             'max_height': 0,
         }
+
         # Get orientation, so we can properly rotate the image if it's not already been
         exif = im.getexif()
         for orientation in ExifTags.TAGS.keys():
-            if ExifTags.TAGS[orientation] == 'Orientation': break
-        if exif[orientation] == 3:
-            im = im.rotate(180, expand=True)
-        elif exif[orientation] == 6:
-            im = im.rotate(270, expand=True)
-        elif exif[orientation] == 8:
-            im = im.rotate(90, expand=True)
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                if exif[orientation] == 3:
+                    im = im.rotate(180, expand=True)
+                elif exif[orientation] == 6:
+                    im = im.rotate(270, expand=True)
+                elif exif[orientation] == 8:
+                    im = im.rotate(90, expand=True)
+                break
 
         upload_folder = cls.upload_folder
         for max_dimension in cls.image_sizes:

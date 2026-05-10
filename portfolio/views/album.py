@@ -2,7 +2,6 @@ import io
 import json
 
 from django.core.files.storage import storages, Storage
-from django.db.models import F
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.views import View

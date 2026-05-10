@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/albums/<int:id>/toggle-publish', views.album_toggle_publish, name='album_publish_toggle'),
     path('api/albums/<int:id>/upload', views.AlbumUpload.as_view(), name='album_upload'),
     path('api/locations', views.LocationsIndex.as_view(), name='locations'),
+    path('api/texts', views.TextIndex.as_view(), name='texts'),
 
     # Catch all non-captured requests, so we can show our SPA
     path('', views.index_view, {"resource": ""}, name='index'),

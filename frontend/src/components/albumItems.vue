@@ -159,9 +159,10 @@ const items = computed(() => {
             _item['srcset'] = srcset.join(',');
             _item['sizes'] = sizes.join(',');
             _item['src'] = item.paths[getClosestWidth(maxImgWidth)];
-        } else if (item.hasOwnProperty('text')) {
+            _item['desc'] = item.description || 'Photo#'+item.order;
+        } else if (item.hasOwnProperty('description')) {
             _item['type'] = 'text';
-            _item['text'] = item.text;
+            _item['description'] = item.description;
         }
         rtn.push(_item);
     }
@@ -215,9 +216,9 @@ function closeGigante(i, img) {
         <div class="grid-sizer"></div>
         <div v-for="item of items" class="grid-item image-container"
              :class="[`grid-item--width-${item.gridSize}`]">
-            <img v-if="item.type =='image'" :srcset="item.srcset" :sizes="item.sizes" :src="item.src"
-                 class="w-100 opacity-0" @click="toggleGigante($event, item)">
-            <pre v-else-if="item.type =='text'">{{ item.text }}</pre>
+            <img v-if="item.type === 'image'" :srcset="item.srcset" :sizes="item.sizes" :src="item.src"
+                 class="w-100 opacity-0" @click="toggleGigante($event, item)" :alt="item.desc">
+            <p v-else-if="item.type === 'text'" class="text-box">{{ item.description }}</p>
         </div>
     </div>
     <div id="view-container-container" class="d-none">
@@ -306,4 +307,7 @@ $gutter: 7px;
     max-height: 100%;
 }
 
+.text-box {
+    white-space: pre-wrap;
+}
 </style>

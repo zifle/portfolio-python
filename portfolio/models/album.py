@@ -1,10 +1,11 @@
 from django.db import models
-from django.db.models import QuerySet, F
+from django.db.models import F
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.forms import model_to_dict
 from django.utils.text import slugify
 
+from .text_box import TextBox
 from .image import Image
 from .album_item import AlbumItem
 from .album_items import AlbumItems
@@ -39,12 +40,21 @@ class Album(models.Model):
 
         return data
 
-    def get_items_in_order(self) -> QuerySet:
-        return (self.items.annotate(order=F('albumitems__order'))
+    def get_items_in_order(self) -> list[AlbumItem]:
+        texts = (self.items.annotate(order=F('albumitems__order'))
+                 .instance_of(TextBox)
+                 .order_by('order'))
+        images = (self.items.annotate(order=F('albumitems__order'))
                        .instance_of(Image)
                        .prefetch_related('camera')
                        .prefetch_related('lens')
                        .order_by('order'))
+        items = []
+        for im in images:
+            items.append(im)
+        for txt in texts:
+            items.append(txt)
+        return sorted(items, key=lambda item: item.order)
 
     def get_detailed_dict(self) -> dict:
         data = self.to_dict(exclude=['items'])
@@ -74,10 +84,11 @@ class Album(models.Model):
         if not items:
             items = self.items.instance_of(Image).prefetch_related('camera').prefetch_related('lens')
         for im in items:
-            if im.camera:
-                cameras.add(im.camera)
-            if im.lens:
-                lenses.add(im.lens)
+            if isinstance(im, Image):
+                if im.camera:
+                    cameras.add(im.camera)
+                if im.lens:
+                    lenses.add(im.lens)
 
         for cam in cameras:
             tags.append(str(cam))

@@ -16,3 +16,6 @@ from .category import (
     CategoryIndex,
     CategoryDetail,
 )
+from .text import (
+    TextIndex,
+)

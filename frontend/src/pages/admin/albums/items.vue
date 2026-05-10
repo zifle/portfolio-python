@@ -1,5 +1,6 @@
 <script setup>
-import {computed, onMounted, useTemplateRef} from "vue";
+import {computed, nextTick, onMounted, ref, useTemplateRef} from "vue";
+import {useAdminAlbumStore} from "../../../store/admin/albums.js";
 
 const {'items': album_items} = defineProps(['items'])
 const emit = defineEmits(['albumItems', 'listItems']);
@@ -33,9 +34,12 @@ const itemsList = computed(() => {
             _item['sizes'] = sizes.join(',');
             _item['src'] = item.paths[max_width];
             _item['desc'] = item.description || 'Photo#'+item.id+' in order#'+order;
-        } else if (item.hasOwnProperty('text')) {
+        } else if (item.hasOwnProperty('description')) {
+            // While both images and text boxes have descriptions,
+            // text boxes are almost exclusively descriptions
             _item['type'] = 'text';
-            _item['text'] = item.text;
+            _item['description'] = item.description;
+            _item['col_size'] = item.col_size || 1;
         }
         final_items.push(_item);
     }
@@ -158,6 +162,48 @@ function getDragAfterElement(target, container) {
     return getDragAfterElement(target.parentElement, container);
 }
 
+
+const albumStore = useAdminAlbumStore();
+function addTextBox() {
+    const defaultText = 'Add some text here ...';
+    const last = itemsList.value[itemsList.value.length - 1];
+    const itm = {
+        id: 0,
+        order: last.order+1,
+        description: defaultText,
+        col_size: 1,
+    };
+    const new_list = [...album_items];
+    new_list.push(itm);
+    emit('albumItems', new_list);
+}
+
+const editTextId = ref(null);
+async function saveText(itm) {
+    const txt = await albumStore.saveTextBox(itm);
+    if (txt) {
+        txt.order = itm.order;
+        const new_items = album_items;
+        for (let item of new_items) {
+            if (item.id === itm.id) {
+                item.id = txt.id;
+                item.description = txt.description;
+                item.col_size = txt.col_size;
+                break;
+            }
+        }
+        emit('albumItems', new_items)
+    }
+    editTextId.value = null;
+}
+function editText(itm) {
+    editTextId.value = itm.id;
+    nextTick(() => {
+        const txtField = document.querySelector('.edit-text-field');
+        if (txtField) txtField.focus();
+    });
+}
+
 </script>
 
 <template>
@@ -170,7 +216,17 @@ function getDragAfterElement(target, container) {
 
             <img loading="lazy" :srcset="itm.srcset" :sizes="itm.sizes" :src="itm.src"
                  class="image-preview" v-if="itm.type === 'image'" :alt="itm.desc">
-            <pre v-else-if="itm.type === 'text'">{{ itm.text }}</pre>
+            <template v-else-if="itm.type === 'text'">
+                <textarea v-if="editTextId === itm.id" class="form-control h-100 edit-text-field"
+                          v-model="itm.description" @blur="saveText(itm)"></textarea>
+                <pre v-else @dblclick="editText(itm)" class="h-100 cursor-text">{{ itm.description }}</pre>
+            </template>
+        </div>
+        <div class="col-lg-3 col-6 mb-3">
+            <div class="create-text-box clickable" @click="addTextBox">
+                <span class="plus">+</span>
+                Add Text
+            </div>
         </div>
     </div>
 </template>
@@ -222,5 +278,18 @@ function getDragAfterElement(target, container) {
     padding: 10px 20px;
     background-color: var(--bs-body-bg);
     border: 2px solid var(--bs-border-color);
+}
+
+.create-text-box {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    font-size: 2em;
+    border: 5px solid rgba(0,0,0,0.2);
+}
+.create-text-box > .plus {
+    font-size: 1.5em;
 }
 </style>

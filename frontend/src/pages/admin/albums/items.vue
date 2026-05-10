@@ -1,10 +1,8 @@
 <script setup>
-import {computed, onMounted, ref, useTemplateRef} from "vue";
-import {useAdminAlbumStore} from "../../../store/admin/albums.js";
+import {computed, onMounted, useTemplateRef} from "vue";
 
-const albumStore = useAdminAlbumStore();
 const {'items': album_items} = defineProps(['items'])
-const emit = defineEmits(['filesUploaded', 'albumItems', 'listItems']);
+const emit = defineEmits(['albumItems', 'listItems']);
 
 const itemsList = computed(() => {
     const final_items = [];
@@ -33,42 +31,15 @@ const itemsList = computed(() => {
             _item['srcset'] = srcset.join(',');
             _item['sizes'] = sizes.join(',');
             _item['src'] = item.paths[max_width];
+            _item['desc'] = item.description || 'Photo#'+item.id+' in order#'+order;
         } else if (item.hasOwnProperty('text')) {
             _item['type'] = 'text';
             _item['text'] = item.text;
         }
-        if (_item !== null)
-            final_items.push(_item);
+        final_items.push(_item);
     }
     emit('listItems', final_items);
     return final_items;
-});
-
-const fileUpload = useTemplateRef('fileUpload');
-const uploading = ref(false);
-onMounted(() => {
-    fileUpload.value.addEventListener("change", async (e) => {
-        uploading.value = true;
-        try {
-            const files = e.target.files;
-            const data = new FormData();
-
-            let idx = 0;
-            for (const file of files) {
-                if (!file.type.startsWith("image/")) {
-                    continue;
-                }
-
-                data.append('file_' + idx, file);
-                idx++;
-            }
-
-            const upload_data = await albumStore.uploadImages(data);
-            emit('filesUploaded', upload_data);
-        } finally {
-            uploading.value = false;
-        }
-    });
 });
 
 function removeItem(item) {
@@ -135,7 +106,7 @@ onMounted(() => {
         }
         emit('albumItems', newList);
     });
-    sortableList.value.addEventListener('dragleave', e => {
+    sortableList.value.addEventListener('dragleave', () => {
         dropInOrder = null;
         const elms = sortableList.value.querySelectorAll('[draggable=true]');
         for (let elm of elms) {
@@ -193,18 +164,9 @@ function getDragAfterElement(target, container) {
             </div>
 
             <img loading="lazy" :srcset="itm.srcset" :sizes="itm.sizes" :src="itm.src"
-                 class="image-preview" v-if="itm.type =='image'">
-            <pre v-else-if="itm.type =='text'">{{ itm.text }}</pre>
+                 class="image-preview" v-if="itm.type === 'image'" :alt="itm.desc">
+            <pre v-else-if="itm.type === 'text'">{{ itm.text }}</pre>
         </div>
-    </div>
-
-    <div class="mt-3 mb-3">
-        <label for="file-upload">Upload Images</label>
-        <input type="file" multiple class="form-control" id="file-upload" ref="fileUpload">
-    </div>
-
-    <div v-if="uploading" class="uploading position-fixed">
-        Uploading images ...
     </div>
 </template>
 

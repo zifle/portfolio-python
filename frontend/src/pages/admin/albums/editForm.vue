@@ -5,6 +5,7 @@ import {useCategoryStore} from "../../../store/categories.js";
 import {useLocationStore} from "../../../store/locations.js";
 import Items from "./items.vue";
 import {useAlbumStore} from "../../../store/albums.js";
+import ImageUpload from "./imageUpload.vue";
 
 const albumStore = useAdminAlbumStore();
 const publicAlbumStore = useAlbumStore();
@@ -214,10 +215,11 @@ async function insertIntoDescription(text) {
     </form>
 
     <h4>Album items</h4>
-    <items class="mt-4"
-           :items="album.items" @files-uploaded="imagesUploaded"
+    <items class="mt-4" :items="album.items"
            @album-items="(itms) => emit('albumItems', itms)"
            @list-items="(itms) => tmp_album_items = itms"></items>
+
+    <image-upload @files-uploaded="imagesUploaded"></image-upload>
 </template>
 
 <style scoped>

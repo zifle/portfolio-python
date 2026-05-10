@@ -58,6 +58,8 @@ def exif_to_dict(exif: Exif) -> dict[str, None|str|float|int]:
     for k, v in exif.items():
         tag_name = TAGS.get(k, k)
         if isinstance(v, str) or isinstance(v, int) or isinstance(v, float):
+            if isinstance(v, str) and len(v.strip()) == 0:
+                continue
             exif_dict[tag_name] = v
 
     # Get extra data from the EXIF IFD (includes things like lens model, etc.)
@@ -65,8 +67,14 @@ def exif_to_dict(exif: Exif) -> dict[str, None|str|float|int]:
     for k, v in exif_ifd.items():
         tag_name = TAGS.get(k, k)
         if isinstance(v, str) or isinstance(v, int) or isinstance(v, float):
+            if isinstance(v, str) and len(v.strip()) == 0:
+                continue
             exif_dict[tag_name] = v
         elif isinstance(v, IFDRational):
+            if v.denominator == 0:
+                # A zero-value on the denominator is essentially an empty value,
+                # so we skip the field entirely to avoid any errors
+                continue
             exif_dict[tag_name] = int(v.numerator) / v.denominator
             exif_dict[tag_name + '_repr'] = repr(v)
 

@@ -103,16 +103,18 @@ class Image(AlbumItem):
 
     def set_exif_params(self, exif: dict[str, None|str|float|int]):
         if 'Make' in exif and 'Model' in exif:
-            camera_brand = exif['Make']
-            camera_model = exif['Model']
-            camera, _ = Camera.objects.get_or_create(brand=camera_brand, model=camera_model)
-            self.camera = camera
+            camera_brand = str(exif['Make'])
+            camera_model = str(exif['Model'])
+            if len(camera_brand) > 0 and len(camera_model) > 0:
+                camera, _ = Camera.objects.get_or_create(brand=camera_brand, model=camera_model)
+                self.camera = camera
 
         if 'LensMake' in exif:
             lens_brand = str(exif['LensMake']).strip()
             lens_model = str(exif['LensModel']).strip(' \u0000')
-            lens, _ = Lens.objects.get_or_create(brand=lens_brand, model=lens_model)
-            self.lens = lens
+            if len(lens_brand) > 0 and len(lens_model) > 0:
+                lens, _ = Lens.objects.get_or_create(brand=lens_brand, model=lens_model)
+                self.lens = lens
 
         try:
             date_taken = None

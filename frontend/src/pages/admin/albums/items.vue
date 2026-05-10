@@ -4,6 +4,7 @@ import {computed, onMounted, useTemplateRef} from "vue";
 const {'items': album_items} = defineProps(['items'])
 const emit = defineEmits(['albumItems', 'listItems']);
 
+let initialLoad = true;
 const itemsList = computed(() => {
     const final_items = [];
     let order = 0;
@@ -37,6 +38,10 @@ const itemsList = computed(() => {
             _item['text'] = item.text;
         }
         final_items.push(_item);
+    }
+    if (initialLoad && final_items.length === 0) {
+        initialLoad = false;
+        return final_items;
     }
     emit('listItems', final_items);
     return final_items;

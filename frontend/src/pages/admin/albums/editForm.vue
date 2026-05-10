@@ -1,6 +1,6 @@
 <script setup>
 import {useAdminAlbumStore} from "../../../store/admin/albums.js";
-import {computed, onMounted, ref, watch} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {useCategoryStore} from "../../../store/categories.js";
 import {useLocationStore} from "../../../store/locations.js";
 import Items from "./items.vue";
@@ -21,6 +21,7 @@ onMounted(() => {
 })
 
 const saving = ref(false);
+const unsavedChanges = ref(false);
 const tmp_album_items = ref([]);
 async function saveAlbum() {
     saving.value = true;
@@ -32,14 +33,27 @@ async function saveAlbum() {
             emit("albumSaved", new_album);
         }
         publicAlbumStore.getAlbums(true);
+        initialLoad = true; // We get a new tmp_album_items update when updating the album obj
+        unsavedChanges.value = false;
     } finally {
         saving.value = false;
     }
 }
 
-// watch(() => {
-//     console.log('tmp_album_items', tmp_album_items.value);
-// })
+let initialLoad = true;
+function setTempAlbumItems(items) {
+    tmp_album_items.value = items;
+    // console.log('tmp_album_items', tmp_album_items.value);
+    if (initialLoad) {
+        initialLoad = false;
+        return;
+    }
+    changedValues();
+}
+
+function changedValues() {
+    unsavedChanges.value = true;
+}
 
 const locDistances = ref([])
 const locations = computed(() => {
@@ -155,12 +169,11 @@ async function insertIntoDescription(text) {
         <div class="row">
             <div class="mb-3 col-lg-10">
                 <label for="album-title" class="form-label">Album Title</label>
-                <input type="text" id="album-title" v-model="album.title" class="form-control">
-                <div class="form-text">A slug will be automatically generated from the title</div>
+                <input type="text" id="album-title" v-model="album.title" class="form-control" @change="changedValues">
             </div>
-            <div class="mb-3 col-lg-2 align-content-center">
+            <div class="mb-3 col-lg-2 align-content-end">
                 <div class="form-check">
-                    <input type="checkbox" class="form-check-input" id="album-published" v-model="album.published">
+                    <input type="checkbox" class="form-check-input" id="album-published" v-model="album.published" @change="changedValues">
                     <label for="album-published" class="form-check-label">Published</label>
                 </div>
             </div>
@@ -169,25 +182,25 @@ async function insertIntoDescription(text) {
             <div class="mb-3 col-lg-6">
                 <label for="album-date-start" class="form-label">Start Date</label>
                 <input type="date" v-model="album.date_start" class="form-control"
-                        id="album-date-start">
+                        id="album-date-start" @change="changedValues">
             </div>
             <div class="mb-3 col-lg-6">
                 <label for="album-date-end" class="form-label">End Date</label>
                 <input type="date" v-model="album.date_end" class="form-control"
-                        id="album-date-end">
+                        id="album-date-end" @change="changedValues">
             </div>
         </div>
         <div class="row">
             <div class="mb-3 col-lg-6">
                 <label for="album-category" class="form-label">Category</label>
-                <select id="album-category" v-model="album.category" class="form-select">
+                <select id="album-category" v-model="album.category" class="form-select" @change="changedValues">
                     <option :value="null">None</option>
                     <option v-for="cat in catStore.categories" :value="cat.id">{{ cat.name }}</option>
                 </select>
             </div>
             <div class="mb-3 col-lg-6">
                 <label for="album-location" class="form-label">Location</label>
-                <select id="album-location" v-model="album.location" class="form-select">
+                <select id="album-location" v-model="album.location" class="form-select" @change="changedValues">
                     <option :value="null">None</option>
                     <option v-for="loc in locations" :value="loc.id">
                         {{ loc.name }}
@@ -201,7 +214,7 @@ async function insertIntoDescription(text) {
         <div class="mb-3">
             <label for="album-description" class="form-label">Album Description</label>
             <textarea id="album-description" cols="30" rows="10" v-model="album.description"
-                      class="form-control"></textarea>
+                      class="form-control" @change="changedValues"></textarea>
             <div class="form-text">
                 <span v-for="tag in suggested_tags" @click="insertIntoDescription(tag)"
                       class="badge text-bg-secondary clickable me-2">
@@ -210,14 +223,15 @@ async function insertIntoDescription(text) {
             </div>
         </div>
 
-        <button type="submit" class="btn btn-success" :disabled="saving">Save Album</button>
+        <button type="submit" class="btn btn-success me-2" :disabled="saving">Save Album</button>
+        <span v-if="unsavedChanges" class="text-warning me-2">Unsaved changes</span>
         <span v-if="saving">Saving ...</span>
     </form>
 
     <h4>Album items</h4>
     <items class="mt-4" :items="album.items"
            @album-items="(itms) => emit('albumItems', itms)"
-           @list-items="(itms) => tmp_album_items = itms"></items>
+           @list-items="setTempAlbumItems"></items>
 
     <image-upload @files-uploaded="imagesUploaded"></image-upload>
 </template>

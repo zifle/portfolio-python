@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 import {onMounted, ref} from "vue";
 import EditForm from "./editForm.vue";
 import {useAdminAlbumStore} from "../../../store/admin/albums";

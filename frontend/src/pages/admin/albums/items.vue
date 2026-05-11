@@ -123,6 +123,10 @@ onMounted(() => {
         }
     });
     sortableList.value.addEventListener('dragover', e => {
+        if (e.dataTransfer.types.includes('Files')) {
+            // We only handle element reordering here, file drops not included
+            return;
+        }
         e.preventDefault();
         const draggingOverItemElm = getDragAfterElement(e.target, sortableList.value);
         const elms = sortableList.value.querySelectorAll('[draggable=true]');

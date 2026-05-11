@@ -8,7 +8,6 @@ from .auth import (
 from .album import (
     AlbumIndex,
     AlbumDetail,
-    AlbumUpload,
     album_toggle_publish,
 )
 from .location import LocationsIndex
@@ -18,4 +17,7 @@ from .category import (
 )
 from .text import (
     TextIndex,
+)
+from .upload import (
+    ImageUpload,
 )

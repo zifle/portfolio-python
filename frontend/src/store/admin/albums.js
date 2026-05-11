@@ -106,7 +106,7 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
     async function uploadImages(formData) {
         const authStore = useAuthStore();
         if (authStore.isAuthenticated) {
-            const response = await fetch(`/api/albums/0/upload`, {
+            const response = await fetch(`/api/upload`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

@@ -34,6 +34,7 @@ const itemsList = computed(() => {
             _item['sizes'] = sizes.join(',');
             _item['src'] = item.paths[max_width];
             _item['desc'] = item.description || 'Photo#'+item.id+' in order#'+order;
+            _item['description'] = item.description;
         } else if (item.hasOwnProperty('description')) {
             // While both images and text boxes have descriptions,
             // text boxes are almost exclusively descriptions
@@ -184,15 +185,22 @@ function addTextBox() {
 
 const editTextId = ref(null);
 async function saveText(itm) {
-    const txt = await albumStore.saveTextBox(itm);
-    if (txt) {
-        txt.order = itm.order;
+    let _itm;
+    if (itm.type === 'image') {
+        _itm = await albumStore.saveImageDescription(itm);
+    } else if (itm.type === 'text') {
+        _itm = await albumStore.saveTextBox(itm);
+    }
+    if (_itm) {
+        _itm.order = itm.order;
         const new_items = album_items;
         for (let item of new_items) {
             if (item.id === itm.id) {
-                item.id = txt.id;
-                item.description = txt.description;
-                item.col_size = txt.col_size;
+                item.id = _itm.id;
+                item.description = _itm.description;
+                if (_itm.hasOwnProperty('col_size')) {
+                    item.col_size = _itm.col_size;
+                }
                 break;
             }
         }
@@ -218,8 +226,13 @@ function editText(itm) {
                 <span class="badge text-bg-danger clickable" @click="removeItem(itm)">X</span>
             </div>
 
-            <img loading="lazy" :srcset="itm.srcset" :sizes="itm.sizes" :src="itm.src"
-                 class="image-preview" v-if="itm.type === 'image'" :alt="itm.desc">
+            <template v-if="itm.type === 'image'">
+                <img loading="lazy" :srcset="itm.srcset" :sizes="itm.sizes" :src="itm.src"
+                     class="image-preview" :alt="itm.desc"
+                     @dblclick="editText(itm)">
+                <textarea v-if="editTextId === itm.id" class="form-control edit-text-field"
+                          v-model="itm.description" @blur="saveText(itm)"></textarea>
+            </template>
             <template v-else-if="itm.type === 'text'">
                 <textarea v-if="editTextId === itm.id" class="form-control h-100 edit-text-field"
                           v-model="itm.description" @blur="saveText(itm)"></textarea>

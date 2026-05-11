@@ -136,6 +136,22 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
         }
     }
 
+    async function saveImageDescription(img) {
+        const authStore = useAuthStore();
+        if (authStore.isAuthenticated) {
+            const response = await fetch(`/api/images/${img.id}/description`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify(img),
+            });
+        }
+    }
+
     return {
         albums,
         getAlbums,
@@ -145,5 +161,6 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
         uploadImages,
         deleteAlbum,
         saveTextBox,
+        saveImageDescription,
     };
 });

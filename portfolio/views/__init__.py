@@ -21,3 +21,4 @@ from .text import (
 from .upload import (
     ImageUpload,
 )
+from .image import post_image_description

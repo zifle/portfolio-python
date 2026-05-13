@@ -11,17 +11,17 @@ const images = useTemplateRef('images');
 
 watch(() => {
     if (loading) {
-        const imgs = images.value.querySelectorAll('img');
-        for (let img of imgs) {
-            img.classList.add('opacity-0');
+        const items = images.value.querySelectorAll('.image,.text-box');
+        for (let item of items) {
+            item.classList.add('opacity-0');
         }
     }
 });
 function stopLoading() {
     if (images.value !== null) {
-        const imgs = images.value.querySelectorAll('img');
-        for (let img of imgs) {
-            img.classList.remove('opacity-0');
+        const items = images.value.querySelectorAll('.image,.text-box');
+        for (let item of items) {
+            item.classList.remove('opacity-0');
         }
     }
 }
@@ -217,8 +217,8 @@ function closeGigante(i, img) {
         <div v-for="item of items" class="grid-item image-container"
              :class="[`grid-item--width-${item.gridSize}`]">
             <img v-if="item.type === 'image'" :srcset="item.srcset" :sizes="item.sizes" :src="item.src"
-                 class="w-100 opacity-0" @click="toggleGigante($event, item)" :alt="item.desc">
-            <p v-else-if="item.type === 'text'" class="text-box">{{ item.description }}</p>
+                 class="image w-100 opacity-0" @click="toggleGigante($event, item)" :alt="item.desc">
+            <p v-else-if="item.type === 'text'" class="text-box opacity-0">{{ item.description }}</p>
         </div>
     </div>
     <div id="view-container-container" class="d-none">

@@ -105,4 +105,12 @@ onUnmounted(() => {
     font-size: 20rem;
     user-select: none;
 }
+
+.uploading {
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background-color: var(--bs-body-bg);
+    border: 2px solid var(--bs-border-color);
+}
 </style>

@@ -289,14 +289,6 @@ function editText(itm) {
     background-color: rgba(0,255,0,0.3);
 }
 
-.uploading {
-    bottom: 20px;
-    right: 20px;
-    padding: 10px 20px;
-    background-color: var(--bs-body-bg);
-    border: 2px solid var(--bs-border-color);
-}
-
 .create-text-box {
     display: flex;
     height: 100%;

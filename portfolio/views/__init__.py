@@ -10,7 +10,10 @@ from .album import (
     AlbumDetail,
     album_toggle_publish,
 )
-from .location import LocationsIndex
+from .location import (
+    LocationsIndex,
+    LocationDetail,
+)
 from .category import (
     CategoryIndex,
     CategoryDetail,

@@ -2,7 +2,7 @@ import json
 
 from django.db.models import Count
 from django.forms import model_to_dict
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.views import View
 
@@ -34,3 +34,11 @@ class LocationsIndex(View):
 
         data = model_to_dict(location)
         return JsonResponse(data)
+
+class LocationDetail(View):
+    def delete(self, request, id):
+        if not request.user.is_authenticated:
+            return HttpResponse('', status=401)
+        location = get_object_or_404(Location, pk=id)
+        location.delete()
+        return HttpResponse("Deleted location", status=200)

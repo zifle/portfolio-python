@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/albums/<int:id>/toggle-publish', views.album_toggle_publish, name='album_publish_toggle'),
     path('api/upload', views.ImageUpload.as_view(), name='image_upload'),
     path('api/locations', views.LocationsIndex.as_view(), name='locations'),
+    path('api/locations/<int:id>', views.LocationDetail.as_view(), name='location'),
     path('api/texts', views.TextIndex.as_view(), name='texts'),
     path('api/images/<int:id>/description', views.post_image_description, name='post_image_description'),
 

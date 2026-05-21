@@ -120,10 +120,10 @@ class Image(AlbumItem):
             date_taken = None
             if 'DateTimeOriginal' in exif:
                 date_taken = exif['DateTimeOriginal']
-            elif 'DateTime' in exif:
-                date_taken = exif['DateTime']
             elif 'DateTimeDigitized' in exif:
                 date_taken = exif['DateTimeDigitized']
+            elif 'DateTime' in exif:
+                date_taken = exif['DateTime']
 
             if 'OffsetTimeOriginal' in exif:
                 time_offset = exif['OffsetTimeOriginal']

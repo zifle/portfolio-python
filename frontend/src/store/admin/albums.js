@@ -119,6 +119,22 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
         }
     }
 
+    async function checkImageDuplicates(props) {
+        const authStore = useAuthStore();
+        if (authStore.isAuthenticated) {
+            const response = await fetch('/api/upload/check-duplicates', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify(props),
+            });
+            return await response.json();
+        }
+    }
+
     async function saveTextBox(box) {
         const authStore = useAuthStore();
         if (authStore.isAuthenticated) {
@@ -159,6 +175,7 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
         saveAlbum,
         togglePublished,
         uploadImages,
+        checkImageDuplicates,
         deleteAlbum,
         saveTextBox,
         saveImageDescription,

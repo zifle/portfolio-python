@@ -2,6 +2,7 @@
 import {onMounted, onUnmounted, ref, useTemplateRef} from "vue";
 import {useAdminAlbumStore} from "../../../store/admin/albums.js";
 import { useLocationStore } from "../../../store/locations.js";
+import ExifReader from 'exifreader';
 
 const albumStore = useAdminAlbumStore();
 
@@ -53,11 +54,25 @@ async function uploadImagesIndividually(files) {
     uploading.value = true;
 
     try {
+        const props = await getImageDuplicationProps(files);
+        const check = await albumStore.checkImageDuplicates(props);
+        if (check.hasOwnProperty('locations')) {
+            emit('filesUploaded', check);
+        }
+
+        if (check.hasOwnProperty('upload') && check.upload.length === 0) {
+            // All images are already on the server, no need to send them again
+            return;
+        }
+
         let coords = [];
         const dates = [];
         const uploadsPromises = [];
         for (const file of files) {
             if (!file.type.startsWith('image/')) {
+                continue;
+            }
+            if (!check.upload.includes(file.name)) {
                 continue;
             }
 
@@ -84,6 +99,53 @@ async function uploadImagesIndividually(files) {
     } finally {
         uploading.value = false;
     }
+}
+
+async function getImageDuplicationProps(files) {
+    const promises = [];
+    for (const file of files) {
+        if (!file.type.startsWith('image/')) {
+            continue;
+        }
+        const prom = new Promise(async (res) => {
+            const exif = await ExifReader.load(file);
+
+            let dt = new Date(file.lastModified);
+            let date;
+            if (exif.hasOwnProperty('DateTimeOriginal')) {
+                date = exif.DateTimeOriginal.description;
+            } else if (exif.hasOwnProperty('DateTimeDigitized')) {
+                date = exif.DateTimeDigitized.description;
+            } else if (exif.hasOwnProperty('DateTime')) {
+                date = exif.DateTime.description;
+            }
+            if (date) {
+                // Fix the date format (uses : instead of - to separate y-m-d)
+                let [d, t] = date.split(' ');
+                d = d.replaceAll(':', '-');
+                date = d+'T'+t
+            }
+
+            let offset = '+0000';
+            if (exif.hasOwnProperty('OffsetTimeOriginal')) {
+                offset = exif.OffsetTimeOriginal.description.replace(':', '');
+            } else if (exif.hasOwnProperty('OffsetTime')) {
+                offset = exif.OffsetTime.description.replace(':', '');
+            }
+            
+            const date_taken = (new Date(date+offset)).toISOString();
+
+            let location = null;
+            if (exif.hasOwnProperty('GPSLatitude') && exif.hasOwnProperty('GPSLongitude')) {
+                location = [parseFloat(exif.GPSLatitude.description), parseFloat(exif.GPSLongitude.description)];
+            }
+
+            res({filename: file.name, date_taken, location});
+        });
+        promises.push(prom);
+    }
+    const props = await Promise.all(promises);
+    return props;
 }
 
 const dropZone = useTemplateRef('fileDropZone');

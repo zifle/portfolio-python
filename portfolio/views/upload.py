@@ -2,6 +2,8 @@ import io
 from math import ceil
 from multiprocessing import Pool, cpu_count
 import time
+import json
+from datetime import datetime
 
 from PIL.ImageFile import ImageFile
 from django.core.files.storage import storages, Storage
@@ -23,6 +25,7 @@ class ImageUpload(View):
         1600,
         2000
     ]
+    # todo Move these props to env or settings for global use
     upload_folder = 'uploads/'
     use_store = 'staticfiles'
 
@@ -195,3 +198,54 @@ class ImageUpload(View):
             storePath = store.path(upload_folder + _filename)
             img.save(storePath)
         return resizes
+    
+class CheckDuplicates(View):
+    # todo Move these props to env or settings for global use
+    upload_folder = 'uploads/'
+    use_store = 'staticfiles'
+
+    def post(self, request:HttpRequest):
+        if not request.user.is_authenticated:
+            return JsonResponse({"message": "Not logged in"}, status=401)
+        
+        store: Storage = storages[self.use_store]
+
+        data = json.loads(request.body.decode('utf-8'))
+
+        locations: list[tuple[float, float]] = []
+
+        img_list = []
+        dates = set()
+        to_upload = []
+        for i in data:
+            img_model = Image()
+            filename = i["filename"]
+            file_save_path = get_image_path(filename, store, upload_folder=self.upload_folder)
+            img_model.path = file_save_path
+            img_model.date_taken = datetime.fromisoformat(i["date_taken"])
+            dates.add(img_model.date_taken.date())
+            
+            duplicate: Image|None = img_model.has_duplicate()
+            if duplicate:
+                img_list.append(duplicate)
+            else:
+                to_upload.append(filename)
+
+            if "location" in i and i["location"] is not None:
+                lat = i["location"][0]
+                lng = i["location"][1]
+                locations.append((lat, lng))
+        
+        locs = Location.get_nearby(locations)
+        cameras = {im.camera for im in img_list if im.camera is not None}
+        lenses = {im.lens for im in img_list if im.lens is not None}
+
+        return JsonResponse({
+            "success": True,
+            "cameras": [camera.to_dict() for camera in cameras],
+            "lenses": [lens.to_dict() for lens in lenses],
+            "images": [i.to_dict() for i in img_list],
+            "locations": [loc.to_dict() for loc in locs],
+            "dates": sorted(list(dates)),
+            "upload": to_upload,
+        })

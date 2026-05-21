@@ -24,5 +24,6 @@ from .text import (
 )
 from .upload import (
     ImageUpload,
+    CheckDuplicates,
 )
 from .image import post_image_description

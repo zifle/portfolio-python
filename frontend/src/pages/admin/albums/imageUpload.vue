@@ -1,10 +1,13 @@
 <script setup>
 import {onMounted, onUnmounted, ref, useTemplateRef} from "vue";
 import {useAdminAlbumStore} from "../../../store/admin/albums.js";
+import { useLocationStore } from "../../../store/locations.js";
 
 const albumStore = useAdminAlbumStore();
 
-const emit = defineEmits(['filesUploaded']);
+const emit = defineEmits(['filesUploaded', 'locations', 'dates']);
+
+const uploadIndividually = true;
 
 const fileUpload = useTemplateRef('fileUpload');
 const uploading = ref(false);
@@ -16,6 +19,10 @@ onMounted(() => {
 });
 
 async function uploadImages(files) {
+    if (uploadIndividually) {
+        return uploadImagesIndividually(files);
+    }
+
     uploading.value = true;
 
     try {
@@ -36,6 +43,43 @@ async function uploadImages(files) {
             emit('filesUploaded', upload_data);
         } else {
             console.warn('Empty file list!', files);
+        }
+    } finally {
+        uploading.value = false;
+    }
+}
+
+async function uploadImagesIndividually(files) {
+    uploading.value = true;
+
+    try {
+        let coords = [];
+        const dates = [];
+        const uploadsPromises = [];
+        for (const file of files) {
+            if (!file.type.startsWith('image/')) {
+                continue;
+            }
+
+            const data = new FormData();
+            data.append('img', file);
+            const prom = albumStore.uploadImages(data).then(upload_data => {
+                coords = [...coords, ...upload_data.coords];
+                if (upload_data.date !== null)
+                    dates.push(upload_data.date);
+                emit('filesUploaded', upload_data);
+            });
+            uploadsPromises.push(prom);
+        }
+        await Promise.all(uploadsPromises);
+        if (coords.length > 0) {
+            const locStore = useLocationStore();
+            locStore.getNearbyLocations(coords).then(locations => {
+                emit('locations', locations);
+            });
+        }
+        if (dates.length > 0) {
+            emit('dates', dates.filter((val, idx, arr) => arr.indexOf(val) === idx))
         }
     } finally {
         uploading.value = false;

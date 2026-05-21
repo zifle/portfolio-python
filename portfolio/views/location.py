@@ -42,3 +42,16 @@ class LocationDetail(View):
         location = get_object_or_404(Location, pk=id)
         location.delete()
         return HttpResponse("Deleted location", status=200)
+
+class LocationNearby(View):
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return HttpResponse('', status=401)
+        
+        data = json.loads(request.body.decode('utf-8'))
+        if 'coords' in data:
+            locations = Location.get_nearby(data['coords'])
+            locs = [loc.to_dict() for loc in locations]
+            return JsonResponse(locs, safe=False)
+        
+        return JsonResponse([], safe=False)

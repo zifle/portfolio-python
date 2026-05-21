@@ -110,7 +110,7 @@ class Image(AlbumItem):
                 self.camera = camera
 
         if 'LensMake' in exif:
-            lens_brand = str(exif['LensMake']).strip()
+            lens_brand = str(exif['LensMake']).strip(' \u0000')
             lens_model = str(exif['LensModel']).strip(' \u0000')
             if len(lens_brand) > 0 and len(lens_model) > 0:
                 lens, _ = Lens.objects.get_or_create(brand=lens_brand, model=lens_model)

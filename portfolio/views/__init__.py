@@ -13,6 +13,7 @@ from .album import (
 from .location import (
     LocationsIndex,
     LocationDetail,
+    LocationNearby,
 )
 from .category import (
     CategoryIndex,

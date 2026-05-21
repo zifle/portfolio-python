@@ -106,7 +106,7 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
     async function uploadImages(formData) {
         const authStore = useAuthStore();
         if (authStore.isAuthenticated) {
-            const response = await fetch(`/api/upload`, {
+            const response = await fetch('/api/upload', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -122,7 +122,7 @@ export const useAdminAlbumStore = defineStore('admin/albums', () => {
     async function saveTextBox(box) {
         const authStore = useAuthStore();
         if (authStore.isAuthenticated) {
-            const response = await fetch(`/api/texts`, {
+            const response = await fetch('/api/texts', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

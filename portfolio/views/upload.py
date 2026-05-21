@@ -1,10 +1,12 @@
+import io
 from math import ceil
 from multiprocessing import Pool, cpu_count
 import time
 
 from PIL.ImageFile import ImageFile
 from django.core.files.storage import storages, Storage
-from django.http import JsonResponse
+from django.core.files.uploadedfile import UploadedFile
+from django.http import JsonResponse, HttpRequest
 from django.views import View
 from PIL import Image as PILImage, ExifTags
 import logging
@@ -22,74 +24,106 @@ class ImageUpload(View):
         2000
     ]
     upload_folder = 'uploads/'
+    use_store = 'staticfiles'
 
-    def post(self, request):
+    def post(self, request:HttpRequest):
         if not request.user.is_authenticated:
             return JsonResponse({"message": "Not logged in"}, status=401)
 
-        img_list: list[Image] = []
         gps_coords: list[tuple[float, float]] = []
-        store: Storage = storages['staticfiles']
         logger = logging.getLogger('django')
 
-        # Save temp files for handling in subprocesses
-        save_tmp = time.time()
-        handle_imgs = []
-        for img in request.FILES:
-            img_file = request.FILES[img]
-            fname = store.save(img_file.name, img_file)
-            handle_imgs.append(fname)
-        logger.debug(f'Spent {time.time()-save_tmp}s saving tmp files')
+        if len(request.FILES) > 1:
+            img_list: list[Image] = []
+            store: Storage = storages[self.use_store]
 
-        handle_time = time.time()
-        handled_imgs = []
-        
-        # Local testing determined a negligable difference in using all (logical) cores,
-        # vs just the physical (assumed to be 2 logical cores for each physical in standard
-        # hyperthreading)
-        physical_cores = max(1, ceil(cpu_count()/2))
-        pool_size = min(physical_cores, len(request.FILES))
-        if pool_size > 0:
-            with Pool(pool_size) as pool:
-                logger.debug(f'Starting process pool, with {pool_size} processes')
-                maplist = [(filename, store) for filename in handle_imgs]
-                handled_imgs = pool.starmap(self.handle_image_upload, maplist)
-                logger.info(f'Spent {time.time()-handle_time}s handling uploaded files')
-                logger.debug('Finished process pool, getting results')
-                for img, gps in handled_imgs:
-                    if img is not None:
-                        img_list.append(img)
-                    if gps is not None:
-                        gps_coords.append(gps)
+            # Save temp files for handling in subprocesses
+            save_tmp = time.time()
+            handle_imgs = []
+            for img in request.FILES:
+                img_file = request.FILES[img]
+                fname = store.save(img_file.name, img_file)
+                handle_imgs.append(fname)
+            logger.debug(f'Spent {time.time()-save_tmp}s saving tmp files')
 
-        locations = Location.get_nearby(gps_coords)
-        cameras = {im.camera for im in img_list if im.camera is not None}
-        lenses = {im.lens for im in img_list if im.lens is not None}
-        locs = sorted([loc.to_dict() for loc in locations], key=lambda loc: loc['distance'])
-        dates = set()
-        for im in img_list:
-            if im.date_taken:
-                dates.add(im.date_taken.date())
-            else:
-                dates.add(None)
+            handle_time = time.time()
+            handled_imgs = []
+            
+            # Local testing determined a negligable difference in using all (logical) cores,
+            # vs just the physical (assumed to be 2 logical cores for each physical in standard
+            # hyperthreading)
+            physical_cores = max(1, ceil(cpu_count()/2))
+            pool_size = min(physical_cores, len(request.FILES))
+            if pool_size > 0:
+                with Pool(pool_size) as pool:
+                    logger.debug(f'Starting process pool, with {pool_size} processes')
+                    handled_imgs = pool.map(self.handle_image_upload, handle_imgs)
+                    logger.info(f'Spent {time.time()-handle_time}s handling uploaded files')
+                    logger.debug('Finished process pool, getting results')
+                    for img, gps in handled_imgs:
+                        if img is not None:
+                            img_list.append(img)
+                        if gps is not None:
+                            gps_coords.append(gps)
 
-        return JsonResponse({
-            "success": True,
-            "cameras": [camera.to_dict() for camera in cameras],
-            "lenses": [lens.to_dict() for lens in lenses],
-            "images": [i.to_dict() for i in img_list],
-            "locations": locs,
-            "dates": sorted(list(dates)),
-        })
+            locations = Location.get_nearby(gps_coords)
+            cameras = {im.camera for im in img_list if im.camera is not None}
+            lenses = {im.lens for im in img_list if im.lens is not None}
+            locs = [loc.to_dict() for loc in locations]
+            dates = set()
+            for im in img_list:
+                if im.date_taken:
+                    dates.add(im.date_taken.date())
+                else:
+                    dates.add(None)
+
+            return JsonResponse({
+                "success": True,
+                "cameras": [camera.to_dict() for camera in cameras],
+                "lenses": [lens.to_dict() for lens in lenses],
+                "images": [i.to_dict() for i in img_list],
+                "locations": locs,
+                "dates": sorted(list(dates)),
+            })
+        elif len(request.FILES) == 1:
+            im = None
+            gps = None
+            for img in request.FILES:
+                logger.debug(f'Found file {img} in request')
+                img_file = request.FILES[img]
+                im, gps = self.handle_image_upload(img_file)
+                break
+
+            if im is None:
+                return JsonResponse({"message": "Image file not in request"}, status=400)
+            
+            if gps is not None:
+                gps_coords.append(gps)
+
+            return JsonResponse({
+                "success": True,
+                "cameras": [im.camera.to_dict()],
+                "lenses": [im.lens.to_dict()],
+                "images": [im.to_dict()],
+                "coords": gps_coords,
+                "date": im.date_taken.date() if im.date_taken else None,
+            })
     
     @classmethod
-    def handle_image_upload(cls, filename, store:Storage) -> tuple[None|Image, None|tuple[float, float]]:
+    def handle_image_upload(cls, filename:str|UploadedFile) -> tuple[None|Image, None|tuple[float, float]]:
         img_model = Image()
+        store: Storage = storages[cls.use_store]
         logger = logging.getLogger('django')
-        logger.debug(f'Handling file {filename}')
+        logger.debug(f'Handling file {filename if isinstance(filename, str) else filename.name}')
         s = time.time()
 
-        filepath = store.path(filename)
+        deleteTmpFile = False
+        if isinstance(filename, str):
+            filepath = store.path(filename)
+            deleteTmpFile = True
+        elif isinstance(filename, UploadedFile):
+            filepath = io.BytesIO(filename.read())
+            filename = filename.name
         try:
             with PILImage.open(filepath) as im:
                 exif = im.getexif()
@@ -101,18 +135,19 @@ class ImageUpload(View):
                 if duplicate:
                     del img_model
                     img_model = duplicate
-                    im.close()
                 else:
                     resizes = cls.make_image_resizes(im, file_save_path, store)
                     img_model.available_res = resizes['available_sizes']
                     img_model.max_width = resizes['max_width']
                     img_model.max_height = resizes['max_height']
-            store.delete(filepath)
+                    img_model.save()
+            
+            if deleteTmpFile:
+                store.delete(filepath)
         except OSError as e:
             logger.error(e.strerror)
             return (None, None)
 
-        img_model.save()
         rtn = (None, None)
         if isinstance(img_model, Image): # Check should be redundant, but IDE is complaining
             rtn = (img_model, None)

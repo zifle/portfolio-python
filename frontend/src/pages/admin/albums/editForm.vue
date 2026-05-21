@@ -139,17 +139,29 @@ function imagesUploaded(data) {
     }
 
     if (data.hasOwnProperty('locations')) {
-        setLocDistances(data.locations);
+        imageLocations(data.locations);
     }
     if (data.hasOwnProperty('cameras')) {
-        cameras.value = data.cameras;
+        cameras.value = [...cameras.value, ...data.cameras]
+            .filter((val, idx, arr) => 
+                arr.findIndex(a => a.id === val.id) === idx);
     }
     if (data.hasOwnProperty('lenses')) {
-        lenses.value = data.lenses;
+        lenses.value = [...lenses.value, ...data.lenses]
+            .filter((val, idx, arr) => 
+                arr.findIndex(a => a.id === val.id) === idx);
     }
     if (data.hasOwnProperty('dates')) {
-        checkAndSetDates(data.dates);
+        imageDates(data.dates);
     }
+}
+
+function imageDates(dates) {
+    checkAndSetDates(dates);
+}
+
+function imageLocations(locations) {
+    setLocDistances(locations);
 }
 
 async function insertIntoDescription(text) {
@@ -233,7 +245,7 @@ async function insertIntoDescription(text) {
            @album-items="(itms) => emit('albumItems', itms)"
            @list-items="setTempAlbumItems"></items>
 
-    <image-upload @files-uploaded="imagesUploaded"></image-upload>
+    <image-upload @files-uploaded="imagesUploaded" @dates="imageDates" @locations="imageLocations"></image-upload>
 </template>
 
 <style scoped>

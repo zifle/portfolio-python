@@ -80,11 +80,29 @@ export const useLocationStore = defineStore('admin/locations', () => {
         }
     }
 
+    async function getNearbyLocations(coords) {
+        const authStore = useAuthStore();
+        if (authStore.isAuthenticated) {
+            const response = await fetch('/api/locations/get-nearby', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify({coords}),
+            });
+            return await response.json();
+        }
+    }
+
     return {
         locations,
         getLocations,
         getLocation,
         saveLocation,
-        deleteLocation
+        deleteLocation,
+        getNearbyLocations,
     }
 })

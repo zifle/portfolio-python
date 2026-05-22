@@ -1,0 +1,28 @@
+#view-container-container {
+    position: fixed;
+    inset: 0;
+    transition: backdrop-filter 500ms;
+    backdrop-filter: blur(0px) grayscale(0%);
+}
+#view-container-container.blur-bg {
+    backdrop-filter: blur(7px) grayscale(80%);
+}
+
+#view-container {
+    position: fixed;
+    transition: all 500ms;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#view-container > img {
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+}
+.image-container.gigante {
+    width: 100vw;
+    opacity: 1;
+    filter: grayscale(0);
+}

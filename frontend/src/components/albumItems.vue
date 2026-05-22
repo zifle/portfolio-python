@@ -46,6 +46,8 @@ onUpdated(() => {
             imgLoadPromises.push(new Promise(res => {
                 img.onload = () => res();
             }));
+        } else {
+            imgLoadPromises.push(true);
         }
     }
     if (imgLoadPromises.length > 0) {
@@ -228,13 +230,17 @@ function closeGigante(i, img) {
 
 <style lang="scss">
 @media screen and (min-width: 800px) {
+    body[data-bs-theme="dark"] .image-container {
+        filter: contrast(80%) brightness(80%) grayscale(30%);
+    }
+
     .image-container {
         transition: 0.2s filter linear;
-        filter: opacity(70%) grayscale(30%);
+        filter: contrast(70%) brightness(100%) grayscale(30%);
     }
 
     .image-container:hover {
-        filter: opacity(100%) grayscale(0%);
+        filter: contrast(100%) brightness(100%) grayscale(0%) !important;
     }
 }
 .image-container.gigante {

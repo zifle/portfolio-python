@@ -2,7 +2,7 @@ import {ref} from "vue";
 import {defineStore} from "pinia";
 import {getCSRFToken, useAuthStore} from "./auth.js";
 
-export const useLocationStore = defineStore('admin/locations', () => {
+export const useLocationStore = defineStore('locations', () => {
     const locations = ref([]);
 
     let getLocationsPromise = null;

@@ -14,6 +14,7 @@ function loadAlbum(slug) {
     albumStore.getAlbum(slug)
         .then(a => {
             album.value = a;
+            setAlbumBackground()
         });
 }
 onMounted(() => {
@@ -23,6 +24,25 @@ onMounted(() => {
 onBeforeRouteUpdate((to, from) => {
     loadAlbum(to.params.slug);
 });
+
+const bgParallax = ref([])
+function setAlbumBackground() {
+    let lastImages = [];
+    const numImages = 3;
+    for (let item of album_items.value) {
+        if (item.hasOwnProperty('paths')) {
+            lastImages.push(item.paths[item.max_width]);
+            if (lastImages.length > numImages) {
+                lastImages.shift();
+            }
+        }
+    }
+    if (lastImages.length) {
+        bgParallax.value = lastImages.toReversed();
+    } else {
+        bgParallax.value = [];
+    }
+}
 
 const loading = ref(false);
 function startLoading() {
@@ -49,6 +69,9 @@ const album_items = computed(() => {
 </script>
 
 <template>
+    <div id="bg" class="parallax-slow">
+        <div v-for="url in bgParallax" :style="`background-image: url('${url}')`"></div>
+    </div>
     <album-description :loading="loading" :album="album"></album-description>
     <album-items :loading="loading" :items="album_items"
                  @img-loaded="stopLoading"></album-items>
